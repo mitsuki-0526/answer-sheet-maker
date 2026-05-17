@@ -1,0 +1,2340 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>解答用紙メーカー</title>
+<style>
+/* ==========================================================
+   解答用紙メーカー v0.4.0 — Office-style document editor shell
+   HTML/CSS only, original branding, accent: #8b3a2f
+   ========================================================== */
+
+:root {
+  /* Surfaces */
+  --bg-app: #faf9f8;
+  --bg-titlebar: #f3f2f1;
+  --bg-ribbon-tabs: #faf9f8;
+  --bg-ribbon-body: #f3f2f1;
+  --bg-editing: #e8e6e3;
+  --bg-paper: #ffffff;
+  --bg-status: #f3f2f1;
+  --bg-sidebar: #faf9f8;
+  --bg-hover: #ededeb;
+  --bg-active: #f6ebe9;     /* tinted accent for pressed/active */
+  --bg-selected: #ebe1de;
+
+  /* Lines */
+  --line-light: #ebe9e6;
+  --line-mid: #d7d3cc;
+  --line-strong: #1f1f1f;
+  --line-print: #1f1f1f;
+
+  /* Text */
+  --text-primary: #1f1f1f;
+  --text-secondary: #605e5c;
+  --text-disabled: #a19f9d;
+  --text-on-accent: #ffffff;
+
+  /* Accent (carried over from existing app) */
+  --accent: #8b3a2f;
+  --accent-hover: #7b3128;
+  --accent-soft: #f6ebe9;
+  --accent-line: #d8bdb8;
+
+  /* Sizes */
+  --titlebar-h: 32px;
+  --ribbon-tabs-h: 32px;
+  --ribbon-body-h: 94px;
+  --status-h: 24px;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Segoe UI Variable", -apple-system, BlinkMacSystemFont,
+               "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", sans-serif;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 0;
+  cursor: pointer;
+}
+button:hover { background: var(--bg-hover); border-color: var(--line-mid); }
+button:active, button.is-active { background: var(--bg-active); border-color: var(--accent-line); }
+
+select, input[type="text"], input[type="number"] {
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: #fff;
+  border: 1px solid var(--line-mid);
+  border-radius: 2px;
+  padding: 2px 6px;
+  height: 22px;
+  line-height: 18px;
+}
+select { padding-right: 18px; }
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+
+/* ---------- App scaffold ---------- */
+.app {
+  display: grid;
+  grid-template-rows: var(--titlebar-h) var(--ribbon-tabs-h) var(--ribbon-body-h) 1fr var(--status-h);
+  height: 100vh;
+}
+
+/* ===== Title bar ===== */
+.titlebar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  background: var(--bg-titlebar);
+  border-bottom: 1px solid var(--line-light);
+  height: var(--titlebar-h);
+  padding: 0 4px 0 8px;
+  font-size: 12px;
+}
+.titlebar .qa {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.app-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  background: var(--accent);
+  border-radius: 3px;
+  color: #fff;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+.app-mark svg { width: 14px; height: 14px; }
+.qa-btn {
+  width: 26px; height: 24px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.qa-btn svg { width: 14px; height: 14px; }
+.qa-sep { width: 1px; height: 16px; background: var(--line-mid); margin: 0 4px; }
+
+.title-center {
+  text-align: center;
+  color: var(--text-primary);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  padding: 0 16px;
+}
+.title-center .doc-name { font-weight: 600; }
+.title-center .doc-sep { color: var(--text-disabled); margin: 0 6px; }
+.title-center .app-name { color: var(--text-secondary); }
+
+.title-right {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0;
+}
+.search-box {
+  display: flex; align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid var(--line-mid);
+  border-radius: 3px;
+  padding: 2px 8px;
+  height: 22px;
+  width: 240px;
+  margin-right: 10px;
+}
+.search-box svg { width: 12px; height: 12px; color: var(--text-secondary); flex-shrink: 0; }
+.search-box .ph { color: var(--text-disabled); font-size: 12px; }
+
+.account-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0 8px;
+  height: 24px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-radius: 3px;
+}
+.account-pill .avatar {
+  width: 22px; height: 22px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600;
+}
+.window-controls { display: flex; }
+.win-btn {
+  width: 40px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 0;
+  border: none;
+}
+.win-btn:hover { background: var(--bg-hover); border: none; }
+.win-btn.close:hover { background: #c42b1c; color: #fff; }
+.win-btn svg { width: 10px; height: 10px; }
+
+/* ===== Ribbon tabs ===== */
+.ribbon-tabs {
+  display: flex;
+  align-items: stretch;
+  background: var(--bg-ribbon-tabs);
+  border-bottom: 1px solid var(--line-light);
+  height: var(--ribbon-tabs-h);
+  padding: 0 8px;
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  height: 100%;
+  font-size: 13px;
+  color: var(--text-primary);
+  border: none;
+  border-radius: 0;
+  border-top: 2px solid transparent;   /* keeps height stable */
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+}
+.tab:hover { background: var(--bg-hover); border-color: transparent; }
+.tab.is-active {
+  background: var(--bg-ribbon-body);
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.tab.file-tab {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  padding: 0 18px;
+  font-weight: 600;
+  border-radius: 0;
+  margin-right: 4px;
+}
+.tab.file-tab:hover { background: var(--accent-hover); }
+
+.ribbon-tabs-right {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 2px;
+}
+.ribbon-tabs-right .small-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 24px; padding: 0 8px; font-size: 12px;
+  color: var(--text-secondary);
+}
+.ribbon-tabs-right .small-btn svg { width: 14px; height: 14px; }
+
+/* ===== Ribbon body ===== */
+.ribbon-body {
+  display: flex;
+  align-items: stretch;
+  background: var(--bg-ribbon-body);
+  border-bottom: 1px solid var(--line-mid);
+  height: var(--ribbon-body-h);
+  padding: 4px 6px 0;
+  overflow-x: auto;
+}
+.rb-group {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0 8px;
+  border-right: 1px solid var(--line-light);
+  position: relative;
+}
+.rb-group:last-child { border-right: none; }
+.rb-group-content {
+  display: flex;
+  align-items: flex-start;
+  flex: 1;
+  gap: 2px;
+  padding: 2px 0 0;
+}
+.rb-group-name {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 2px 4px 4px;
+  margin-top: auto;
+}
+
+/* Big button (32x32 icon + label) */
+.rb-big {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  width: 56px;
+  min-height: 64px;
+  padding: 3px 2px 2px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.rb-big:hover { background: var(--bg-hover); border-color: var(--line-mid); }
+.rb-big.is-active { background: var(--bg-active); border-color: var(--accent-line); }
+.rb-big .ico { width: 28px; height: 28px; display:inline-flex; align-items:center; justify-content:center; }
+.rb-big .ico svg { width: 24px; height: 24px; }
+.rb-big .lbl { white-space: nowrap; }
+.rb-big .lbl.two-line { white-space: normal; text-align: center; }
+.rb-big .caret { width: 8px; height: 8px; margin-top: -2px; }
+
+/* Stack of small buttons (16x16 icon + label) */
+.rb-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: 2px;
+}
+.rb-small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 6px 0 4px;
+  font-size: 11px;
+  color: var(--text-primary);
+  border-radius: 2px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rb-small:hover { background: var(--bg-hover); border-color: var(--line-mid); }
+.rb-small.is-active { background: var(--bg-active); border-color: var(--accent-line); }
+.rb-small .ico { width: 16px; height: 16px; display:inline-flex; align-items:center; justify-content:center; flex-shrink: 0; }
+.rb-small .ico svg { width: 14px; height: 14px; }
+.rb-small .caret { width: 8px; height: 8px; opacity: .6; margin-left: 2px; }
+
+/* Tiny icon-only button (within toggles row) */
+.rb-icon {
+  width: 22px; height: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+}
+.rb-icon:hover { background: var(--bg-hover); border-color: var(--line-mid); }
+.rb-icon.is-active { background: var(--bg-active); border-color: var(--accent-line); color: var(--accent); }
+.rb-icon svg { width: 14px; height: 14px; }
+
+.rb-icon.split { width: 32px; }
+.rb-icon.split .caret { width: 7px; height: 7px; margin-left: 1px; opacity: .6; }
+
+.rb-row {
+  display: flex; align-items: center; gap: 2px;
+  height: 24px;
+}
+.rb-row + .rb-row { margin-top: 2px; }
+.rb-row select { height: 22px; }
+.rb-row .font-name { width: 130px; }
+.rb-row .font-size { width: 50px; }
+.rb-row .small-select { width: 88px; }
+
+.rb-sep { width: 1px; height: 18px; background: var(--line-light); margin: 0 4px; }
+
+/* Toggle pill (for boolean groups like 中央線 / ページ番号) */
+.toggle {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 20px; padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  font-size: 11px;
+  cursor: pointer;
+  background: transparent;
+}
+.toggle:hover { background: var(--bg-hover); border-color: var(--line-mid); }
+.toggle .sw {
+  width: 22px; height: 12px;
+  background: var(--line-mid);
+  border-radius: 7px;
+  position: relative;
+  transition: background .15s;
+}
+.toggle .sw::after {
+  content: "";
+  position: absolute;
+  top: 1px; left: 1px;
+  width: 10px; height: 10px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 1px rgba(0,0,0,.3);
+  transition: left .15s;
+}
+.toggle.is-on .sw { background: var(--accent); }
+.toggle.is-on .sw::after { left: 11px; }
+
+/* Tab panes (only one visible) */
+.ribbon-pane { display: none; flex: 1; min-width: 0; }
+.ribbon-pane.is-active { display: flex; }
+
+/* ===== Main area ===== */
+.main {
+  display: grid;
+  grid-template-columns: 280px 1fr 0;
+  min-height: 0;
+  background: var(--bg-editing);
+}
+
+/* Navigation panel (left) */
+.nav-pane {
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--line-mid);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.nav-header {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 32px; padding: 0 8px 0 12px;
+  border-bottom: 1px solid var(--line-light);
+  font-size: 12px;
+  color: var(--text-primary);
+}
+.nav-header .title { font-weight: 600; }
+.nav-header .meta { color: var(--text-secondary); font-size: 11px; }
+
+.nav-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line-light);
+  height: 28px;
+  padding: 0 8px;
+  gap: 0;
+  font-size: 11px;
+}
+.nav-tab {
+  display: inline-flex; align-items: center;
+  padding: 0 10px; height: 100%;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  background: transparent;
+  border-top: none; border-left: none; border-right: none;
+  border-radius: 0;
+}
+.nav-tab:hover { color: var(--text-primary); background: transparent; }
+.nav-tab.is-active {
+  color: var(--accent); border-bottom-color: var(--accent); font-weight: 600;
+}
+
+.nav-body { overflow-y: auto; padding: 8px 8px 16px; }
+
+/* Document outline items */
+.outline-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  margin-bottom: 1px;
+}
+.outline-item:hover { background: var(--bg-hover); }
+.outline-item.is-active {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.outline-item .num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 18px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.outline-item.is-active .num { color: var(--accent); }
+.outline-item .label { flex: 1; }
+.outline-item .meta { font-size: 11px; color: var(--text-secondary); }
+.outline-item.is-active .meta { color: var(--accent); }
+
+/* Question detail (expanded) */
+.q-detail {
+  margin: 4px 0 12px 12px;
+  padding: 10px;
+  border: 1px solid var(--line-mid);
+  border-radius: 3px;
+  background: #fff;
+}
+.q-detail .det-tabs {
+  display: flex;
+  font-size: 11px;
+  margin: -10px -10px 10px;
+  border-bottom: 1px solid var(--line-light);
+  background: #fafaf8;
+  border-radius: 3px 3px 0 0;
+}
+.det-tab {
+  flex: 1;
+  text-align: center;
+  padding: 6px 0;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.det-tab.is-active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; background: #fff; }
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.field {
+  display: flex; flex-direction: column; gap: 3px;
+}
+.field label { font-size: 11px; color: var(--text-secondary); }
+.field input, .field select { width: 100%; }
+
+.slider-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.slider-row .lbl { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); }
+.slider-row input[type=range] { width: 100%; accent-color: var(--accent); }
+
+.btn-danger {
+  width: 100%;
+  height: 24px;
+  border: 1px solid var(--line-mid);
+  background: #fff;
+  color: var(--accent);
+  border-radius: 3px;
+  font-size: 11px;
+}
+.btn-danger:hover { background: var(--accent-soft); border-color: var(--accent-line); }
+
+.btn-add {
+  width: calc(100% - 16px);
+  margin: 8px;
+  height: 26px;
+  background: #fff;
+  border: 1px dashed var(--line-mid);
+  border-radius: 3px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.btn-add:hover { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+
+/* Editing canvas */
+.canvas-wrap {
+  position: relative;
+  overflow: auto;
+  background: var(--bg-editing);
+}
+.ruler-h {
+  position: sticky;
+  top: 0;
+  height: 18px;
+  background: #fff;
+  border-bottom: 1px solid var(--line-mid);
+  z-index: 5;
+  background-image:
+    linear-gradient(to right, var(--line-mid) 1px, transparent 1px),
+    linear-gradient(to right, var(--line-light) 1px, transparent 1px);
+  background-size: 37.8px 18px, 18.9px 18px;
+  background-position: 0 4px, 0 8px;
+  background-repeat: repeat-x;
+}
+.canvas-inner {
+  display: flex;
+  justify-content: center;
+  padding: 24px 40px 80px;
+}
+.paper-stack { position: relative; }
+.ruler-v {
+  position: absolute;
+  top: 0; left: -22px;
+  width: 18px;
+  height: 100%;
+  background: #fff;
+  border-right: 1px solid var(--line-mid);
+  background-image:
+    linear-gradient(to bottom, var(--line-mid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--line-light) 1px, transparent 1px);
+  background-size: 18px 37.8px, 18px 18.9px;
+}
+
+/* ===== Sheet (must keep classes/IDs) ===== */
+#sheetContainer {
+  position: relative;
+}
+.sheet {
+  position: relative;
+  width: 210mm;
+  min-height: 297mm;
+  background: var(--bg-paper);
+  box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.10);
+  padding: 18mm 16mm;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "BIZ UDPMincho", "MS Mincho", serif;
+  color: #1f1f1f;
+  font-size: 10pt;
+}
+.sheet-header {
+  margin-bottom: 8mm;
+}
+.sheet-header .title {
+  font-size: 18pt;
+  font-weight: 700;
+  margin: 0 0 6mm;
+  letter-spacing: 0.04em;
+}
+.hdr-table {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 110mm;
+  margin-bottom: 4mm;
+}
+.hdr-table th, .hdr-table td {
+  border: 1px solid var(--line-print);
+  padding: 2mm 3mm;
+  font-size: 10pt;
+  font-weight: normal;
+  text-align: left;
+  height: 8mm;
+}
+.hdr-table th { width: 15mm; background: transparent; }
+.hdr-table td.name { width: 50mm; }
+.sheet-header hr.divider {
+  border: none;
+  border-top: 1.5pt solid var(--line-print);
+  margin: 4mm 0 0;
+}
+
+.sheet-body {
+  position: relative;
+}
+.sheet-body.cols-2 {
+  column-count: 2;
+  column-gap: 8mm;
+  column-rule: 1px solid var(--line-print);
+}
+.sheet-body-inner { /* legacy */ }
+
+.q-block {
+  break-inside: avoid;
+  border: 1px solid var(--line-print);
+  margin-bottom: 6mm;
+}
+.q-header {
+  background: #f3f1ed;
+  border-bottom: 1px solid var(--line-print);
+  padding: 1.5mm 3mm;
+  font-weight: 700;
+  font-size: 11pt;
+}
+.q-row {
+  display: grid;
+  grid-template-columns: 10mm 1fr;
+  border-bottom: 1px solid var(--line-print);
+  min-height: 8mm;
+}
+.q-row:last-child { border-bottom: none; }
+.q-row .sub-num {
+  border-right: 1px solid var(--line-print);
+  padding: 1.5mm 2mm;
+  font-size: 10pt;
+}
+.q-row-inline {
+  display: grid;
+  border-bottom: 1px solid var(--line-print);
+}
+.q-row-inline.cols-2 { grid-template-columns: 10mm 1fr 10mm 1fr; }
+.q-row-inline.cols-3 { grid-template-columns: 10mm 1fr 10mm 1fr 10mm 1fr; }
+.q-row-inline.cols-4 { grid-template-columns: 10mm 1fr 10mm 1fr 10mm 1fr 10mm 1fr; }
+.q-row-inline:last-child { border-bottom: none; }
+.q-row-inline .sub-num {
+  border-right: 1px solid var(--line-print);
+  padding: 1.5mm 2mm;
+  font-size: 10pt;
+}
+.q-row-inline .ans-cell + .sub-num { border-left: 1px solid var(--line-print); }
+.ans-cell { padding: 1.5mm 3mm; min-height: 8mm; }
+.ans-cell.writing .cell-inner {
+  background-image: linear-gradient(transparent calc(8mm - 1px), rgba(0,0,0,0.15) 1px);
+  background-size: 100% 8mm;
+  min-height: 24mm;
+}
+.ans-cell.drawing .cell-inner {
+  background-image:
+    linear-gradient(to right, rgba(0,0,0,0.18) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.18) 1px, transparent 1px);
+  background-size: 5mm 5mm;
+  min-height: 22mm;
+}
+.ans-cell.proof .cell-inner { min-height: 48mm; }
+.cell-inner { width: 100%; min-height: 6mm; }
+
+.page-num {
+  text-align: center;
+  margin-top: 8mm;
+  font-size: 9pt;
+  color: #444;
+}
+
+/* Floating textbox layer */
+#textboxLayer {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
+.floating-textbox {
+  position: absolute;
+  pointer-events: auto;
+  background: rgba(255,255,255,0.85);
+  border: 1px dashed #555;
+  padding: 2mm 3mm;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+  font-size: 10pt;
+}
+.floating-textbox.is-selected {
+  border-color: var(--accent);
+  outline: 1px solid var(--accent-soft);
+}
+.floating-textbox.border-style-solid { border-style: solid; }
+.tb-content { width: 100%; min-height: 1em; }
+.resize-handle {
+  position: absolute;
+  right: -4px; bottom: -4px;
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border: 1px solid #fff;
+}
+
+/* ===== Status bar ===== */
+.status {
+  display: flex;
+  align-items: center;
+  background: var(--bg-status);
+  border-top: 1px solid var(--line-light);
+  height: var(--status-h);
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.status .group { display: inline-flex; align-items: center; gap: 6px; }
+.status .sep { width: 1px; height: 12px; background: var(--line-mid); margin: 0 10px; }
+.status .right { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
+.zoom-bar { display: inline-flex; align-items: center; gap: 6px; }
+.zoom-bar .btn {
+  width: 18px; height: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.zoom-bar .btn:hover { background: var(--bg-hover); }
+.zoom-track {
+  width: 90px; height: 4px; background: var(--line-mid); border-radius: 2px; position: relative;
+}
+.zoom-thumb {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translate(-50%, -50%);
+}
+.zoom-val { width: 36px; text-align: right; }
+
+/* ===== Selected-info chip ===== */
+#selectedInfo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  height: 22px;
+  margin-left: 8px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  border-radius: 3px;
+  font-size: 11px;
+}
+#selectedInfo .dot {
+  width: 6px; height: 6px; background: var(--accent); border-radius: 50%;
+}
+
+/* ===== Header chip row (in 挿入 tab) ===== */
+.chip-row {
+  display: inline-flex; align-items: center; gap: 4px;
+  flex-wrap: wrap;
+}
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 0 8px; height: 22px;
+  background: #fff;
+  border: 1px solid var(--line-mid);
+  border-radius: 11px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.chip:hover { border-color: var(--accent-line); }
+.chip.is-active { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
+.chip.add { color: var(--text-secondary); border-style: dashed; }
+
+/* Title input in ribbon */
+.title-input {
+  width: 200px;
+  height: 22px;
+}
+
+/* Helper: make the active group label slightly emphasized */
+.rb-group:hover .rb-group-name { color: var(--text-primary); }
+
+/* When no question is selected, dim format buttons */
+.fmt-disabled .rb-icon { color: var(--text-disabled); }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SVG sprite — all icons used in the ribbon
+     ============================================================ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- App mark: small grid (解答用紙) -->
+    <symbol id="i-appmark" viewBox="0 0 24 24">
+      <rect x="3" y="3" width="18" height="18" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="3" y1="15" x2="21" y2="15" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="12" y1="9" x2="12" y2="21" stroke="currentColor" stroke-width="1.5"/>
+    </symbol>
+
+    <!-- Window controls -->
+    <symbol id="i-min" viewBox="0 0 10 10"><line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1"/></symbol>
+    <symbol id="i-max" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1"/></symbol>
+    <symbol id="i-close" viewBox="0 0 10 10"><line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" stroke-width="1"/><line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" stroke-width="1"/></symbol>
+
+    <!-- Quick access -->
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4v5h7V4M8 20v-6h8v6" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L5 10l4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 10h9a5 5 0 1 1 0 10h-3" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 14l4-4-4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M19 10h-9a5 5 0 1 0 0 10h3" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-caret-d" viewBox="0 0 10 10"><path d="M2 4l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+
+    <!-- Clipboard -->
+    <symbol id="i-paste" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="3" width="6" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8" y="11" width="8" height="6" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-cut" viewBox="0 0 16 16"><circle cx="4" cy="11" r="2" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="12" cy="11" r="2" fill="none" stroke="currentColor" stroke-width="1.3"/><line x1="5" y1="10" x2="13" y2="2" stroke="currentColor" stroke-width="1.3"/><line x1="11" y1="10" x2="3" y2="2" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 16 16"><rect x="3" y="3" width="8" height="10" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="5.5" y="5.5" width="8" height="10" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="i-brush" viewBox="0 0 16 16"><path d="M3 9V4h7v5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="9" width="9" height="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M11 10c2 1 2 2 0 3" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+
+    <!-- Font -->
+    <symbol id="i-bold" viewBox="0 0 16 16"><text x="3" y="13" font-family="Segoe UI" font-size="13" font-weight="800" fill="currentColor">B</text></symbol>
+    <symbol id="i-italic" viewBox="0 0 16 16"><text x="3" y="13" font-family="Georgia" font-size="13" font-style="italic" fill="currentColor">I</text></symbol>
+    <symbol id="i-underline" viewBox="0 0 16 16"><text x="3" y="11" font-family="Segoe UI" font-size="11" fill="currentColor">U</text><line x1="3" y1="14" x2="13" y2="14" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="i-strike" viewBox="0 0 16 16"><text x="3" y="12" font-family="Segoe UI" font-size="11" fill="currentColor">S</text><line x1="2" y1="9" x2="14" y2="9" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="i-sup" viewBox="0 0 16 16"><text x="2" y="13" font-family="Segoe UI" font-size="10" fill="currentColor">X</text><text x="9" y="8" font-family="Segoe UI" font-size="7" fill="currentColor">2</text></symbol>
+    <symbol id="i-sub" viewBox="0 0 16 16"><text x="2" y="11" font-family="Segoe UI" font-size="10" fill="currentColor">X</text><text x="9" y="14" font-family="Segoe UI" font-size="7" fill="currentColor">2</text></symbol>
+    <symbol id="i-fontcolor" viewBox="0 0 16 16"><text x="3" y="11" font-family="Segoe UI" font-size="10" font-weight="700" fill="currentColor">A</text><rect x="3" y="13" width="9" height="2" fill="currentColor"/></symbol>
+    <symbol id="i-highlight" viewBox="0 0 16 16"><path d="M3 11l3-3 4 4-3 3H3z" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="2" y1="15" x2="14" y2="15" stroke="currentColor" stroke-width="1.5"/></symbol>
+
+    <!-- Paragraph alignment -->
+    <symbol id="i-align-l" viewBox="0 0 16 16"><line x1="2" y1="4" x2="13" y2="4" stroke="currentColor" stroke-width="1.3"/><line x1="2" y1="8" x2="9" y2="8" stroke="currentColor" stroke-width="1.3"/><line x1="2" y1="12" x2="11" y2="12" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="i-align-c" viewBox="0 0 16 16"><line x1="2" y1="4" x2="14" y2="4" stroke="currentColor" stroke-width="1.3"/><line x1="4" y1="8" x2="12" y2="8" stroke="currentColor" stroke-width="1.3"/><line x1="3" y1="12" x2="13" y2="12" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="i-align-r" viewBox="0 0 16 16"><line x1="3" y1="4" x2="14" y2="4" stroke="currentColor" stroke-width="1.3"/><line x1="7" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.3"/><line x1="5" y1="12" x2="14" y2="12" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="i-align-j" viewBox="0 0 16 16"><line x1="2" y1="4" x2="14" y2="4" stroke="currentColor" stroke-width="1.3"/><line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.3"/><line x1="2" y1="12" x2="14" y2="12" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="i-valign-t" viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="3" y1="6" x2="13" y2="6" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-valign-m" viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-valign-b" viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="3" y1="10" x2="13" y2="10" stroke="currentColor" stroke-width="1.5"/></symbol>
+
+    <!-- Insert/Pages -->
+    <symbol id="i-textbox" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="6" y="15" font-family="Segoe UI" font-size="8" fill="currentColor">あ</text></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="10" r="1.5" fill="currentColor"/><path d="M3 17l5-5 4 4 3-3 6 6" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-shape" viewBox="0 0 24 24"><rect x="3" y="3" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="17" cy="17" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="1.3"/><line x1="3" y1="15" x2="21" y2="15" stroke="currentColor" stroke-width="1.3"/><line x1="9" y1="4" x2="9" y2="20" stroke="currentColor" stroke-width="1.3"/><line x1="15" y1="4" x2="15" y2="20" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="i-header" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="3" width="18" height="5" fill="currentColor" opacity="0.18"/></symbol>
+    <symbol id="i-pagenum" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="9" y="18" font-family="Segoe UI" font-size="7" fill="currentColor">1/1</text></symbol>
+    <symbol id="i-score" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="6.5" y="15.5" font-family="Segoe UI" font-size="8" font-weight="700" fill="currentColor">点</text></symbol>
+
+    <!-- Question -->
+    <symbol id="i-q-add" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="8" x2="12" y2="16" stroke="currentColor" stroke-width="1.5"/><line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-q-del" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="5" y1="8" x2="11" y2="8" stroke="currentColor" stroke-width="1.4"/></symbol>
+    <symbol id="i-q-set" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 2v2M8 12v2M2 8h2M12 8h2M4 4l1.5 1.5M10.5 10.5L12 12M12 4l-1.5 1.5M5.5 10.5L4 12" stroke="currentColor" stroke-width="1.2"/></symbol>
+    <symbol id="i-clear" viewBox="0 0 16 16"><path d="M3 11l4-8h6l-4 8z" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="2" y1="13" x2="14" y2="13" stroke="currentColor" stroke-width="1.3"/></symbol>
+
+    <!-- Paper / layout -->
+    <symbol id="i-paper" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M15 3v3h3" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-orient" viewBox="0 0 24 24"><rect x="4" y="3" width="11" height="14" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M16 14l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="i-columns" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="3" x2="12" y2="21" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 1.5"/></symbol>
+    <symbol id="i-margins" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="6" y="6" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2 1.5"/></symbol>
+
+    <!-- View -->
+    <symbol id="i-ruler" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="6" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="6" y1="9" x2="6" y2="13" stroke="currentColor" stroke-width="1"/><line x1="9" y1="9" x2="9" y2="11" stroke="currentColor" stroke-width="1"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="1"/><line x1="15" y1="9" x2="15" y2="11" stroke="currentColor" stroke-width="1"/><line x1="18" y1="9" x2="18" y2="13" stroke="currentColor" stroke-width="1"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="9" y1="3" x2="9" y2="21" stroke="currentColor" stroke-width="1"/><line x1="15" y1="3" x2="15" y2="21" stroke="currentColor" stroke-width="1"/><line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" stroke-width="1"/><line x1="3" y1="15" x2="21" y2="15" stroke="currentColor" stroke-width="1"/></symbol>
+    <symbol id="i-nav" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="18" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="13" y1="6" x2="20" y2="6" stroke="currentColor" stroke-width="1.5"/><line x1="13" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="13" y1="18" x2="20" y2="18" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-zoom" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="14.5" y1="14.5" x2="20" y2="20" stroke="currentColor" stroke-width="1.5"/><line x1="7" y1="10" x2="13" y2="10" stroke="currentColor" stroke-width="1.3"/><line x1="10" y1="7" x2="10" y2="13" stroke="currentColor" stroke-width="1.3"/></symbol>
+
+    <!-- Misc -->
+    <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V4h10v5" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="4" y="9" width="16" height="8" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="7" y="14" width="10" height="6" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7l3-3h5l2 3h8v13H3z" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 16 16"><line x1="8" y1="3" x2="8" y2="13" stroke="currentColor" stroke-width="1.5"/><line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 16 16"><circle cx="3" cy="4" r="1" fill="currentColor"/><circle cx="3" cy="8" r="1" fill="currentColor"/><circle cx="3" cy="12" r="1" fill="currentColor"/><line x1="6" y1="4" x2="14" y2="4" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="12" x2="14" y2="12" stroke="currentColor" stroke-width="1.2"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+
+  <!-- ============= TITLE BAR ============= -->
+  <div class="titlebar">
+    <div class="qa">
+      <span class="app-mark" title="解答用紙メーカー"><svg><use href="#i-appmark"/></svg></span>
+      <button class="qa-btn" title="上書き保存"><svg><use href="#i-save"/></svg></button>
+      <button class="qa-btn" title="元に戻す"><svg><use href="#i-undo"/></svg></button>
+      <button class="qa-btn" title="やり直し"><svg><use href="#i-redo"/></svg></button>
+      <span class="qa-sep"></span>
+      <button class="qa-btn" title="クイックアクセス ツール バーのカスタマイズ"><svg><use href="#i-caret-d"/></svg></button>
+    </div>
+    <div class="title-center">
+      <span class="doc-name" id="docName">2学期期末テスト 数学</span>
+      <span class="doc-sep">—</span>
+      <span class="app-name">解答用紙メーカー</span>
+    </div>
+    <div class="title-right">
+      <div class="search-box">
+        <svg><use href="#i-search"/></svg>
+        <span class="ph">検索</span>
+      </div>
+      <div class="account-pill" title="アカウント">
+        <span class="avatar">T</span>
+        <span>教員</span>
+      </div>
+      <div class="window-controls">
+        <button class="win-btn" title="最小化"><svg><use href="#i-min"/></svg></button>
+        <button class="win-btn" title="最大化"><svg><use href="#i-max"/></svg></button>
+        <button class="win-btn close" title="閉じる"><svg><use href="#i-close"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============= RIBBON TABS ============= -->
+  <div class="ribbon-tabs">
+    <button class="tab file-tab">ファイル</button>
+    <button class="tab is-active">ホーム</button>
+    <button class="tab">挿入</button>
+    <button class="tab">用紙</button>
+    <button class="tab">大問</button>
+    <button class="tab">表示</button>
+    <button class="tab">ヘルプ</button>
+    <div class="ribbon-tabs-right">
+      <button class="small-btn"><svg><use href="#i-save"/></svg><span>保存</span></button>
+      <button class="small-btn"><svg><use href="#i-folder"/></svg><span>読込</span></button>
+      <button class="small-btn"><svg><use href="#i-print"/></svg><span>印刷 / PDF</span></button>
+    </div>
+  </div>
+
+  <!-- ============= RIBBON BODY (ホーム pane) ============= -->
+  <div class="ribbon-body">
+    <div class="ribbon-pane is-active">
+
+      <!-- ===== クリップボード ===== -->
+      <div class="rb-group">
+        <div class="rb-group-content">
+          <button class="rb-big" title="貼り付け">
+            <span class="ico"><svg><use href="#i-paste"/></svg></span>
+            <span class="lbl">貼り付け</span>
+            <svg class="caret"><use href="#i-caret-d"/></svg>
+          </button>
+          <div class="rb-stack">
+            <button class="rb-small" title="切り取り"><span class="ico"><svg><use href="#i-cut"/></svg></span><span>切り取り</span></button>
+            <button class="rb-small" title="コピー"><span class="ico"><svg><use href="#i-copy"/></svg></span><span>コピー</span></button>
+            <button class="rb-small" title="書式のコピー"><span class="ico"><svg><use href="#i-brush"/></svg></span><span>書式</span></button>
+          </div>
+        </div>
+        <div class="rb-group-name">クリップボード</div>
+      </div>
+
+      <!-- ===== フォント ===== -->
+      <div class="rb-group">
+        <div class="rb-group-content" style="flex-direction:column; gap:2px;">
+          <div class="rb-row">
+            <select id="fmtFontFamily" class="font-name">
+              <option value="mincho">明朝</option>
+              <option value="gothic">ゴシック</option>
+            </select>
+            <select id="fmtFontSize" class="font-size">
+              <option>8pt</option><option>9pt</option><option selected>10pt</option>
+              <option>11pt</option><option>12pt</option><option>14pt</option>
+              <option>16pt</option><option>18pt</option>
+            </select>
+            <button class="rb-icon" title="フォントサイズ拡大"><span style="font-size:11px;font-weight:700">A⁺</span></button>
+            <button class="rb-icon" title="フォントサイズ縮小"><span style="font-size:11px;font-weight:700">A⁻</span></button>
+          </div>
+          <div class="rb-row">
+            <button id="fmtBold" class="rb-icon" title="太字"><svg><use href="#i-bold"/></svg></button>
+            <button id="fmtItalic" class="rb-icon" title="斜体"><svg><use href="#i-italic"/></svg></button>
+            <button id="fmtUnderline" class="rb-icon" title="下線"><svg><use href="#i-underline"/></svg></button>
+            <button class="rb-icon" title="取り消し線"><svg><use href="#i-strike"/></svg></button>
+            <span class="rb-sep"></span>
+            <button class="rb-icon" title="上付き"><svg><use href="#i-sup"/></svg></button>
+            <button class="rb-icon" title="下付き"><svg><use href="#i-sub"/></svg></button>
+            <span class="rb-sep"></span>
+            <button class="rb-icon split" title="フォントの色"><svg><use href="#i-fontcolor"/></svg><svg class="caret"><use href="#i-caret-d"/></svg></button>
+            <button class="rb-icon split" title="蛍光ペン"><svg><use href="#i-highlight"/></svg><svg class="caret"><use href="#i-caret-d"/></svg></button>
+            <button id="fmtClear" class="rb-icon" title="セルをクリア"><svg><use href="#i-clear"/></svg></button>
+          </div>
+        </div>
+        <div class="rb-group-name">フォント</div>
+      </div>
+
+      <!-- ===== 段落 ===== -->
+      <div class="rb-group">
+        <div class="rb-group-content" style="flex-direction:column; gap:2px;">
+          <div class="rb-row">
+            <button id="fmtAlignLeft" class="rb-icon is-active" title="左揃え"><svg><use href="#i-align-l"/></svg></button>
+            <button id="fmtAlignCenter" class="rb-icon" title="中央揃え"><svg><use href="#i-align-c"/></svg></button>
+            <button id="fmtAlignRight" class="rb-icon" title="右揃え"><svg><use href="#i-align-r"/></svg></button>
+            <button id="fmtAlignJustify" class="rb-icon" title="均等割り付け"><svg><use href="#i-align-j"/></svg></button>
+          </div>
+          <div class="rb-row">
+            <button id="fmtVAlignTop" class="rb-icon is-active" title="上揃え"><svg><use href="#i-valign-t"/></svg></button>
+            <button id="fmtVAlignMiddle" class="rb-icon" title="中央揃え (上下)"><svg><use href="#i-valign-m"/></svg></button>
+            <button id="fmtVAlignBottom" class="rb-icon" title="下揃え"><svg><use href="#i-valign-b"/></svg></button>
+          </div>
+        </div>
+        <div class="rb-group-name">段落</div>
+      </div>
+
+      <!-- ===== 解答欄 ===== -->
+      <div class="rb-group">
+        <div class="rb-group-content">
+          <button class="rb-big" title="大問を追加">
+            <span class="ico"><svg><use href="#i-q-add"/></svg></span>
+            <span class="lbl two-line">大問<br>追加</span>
+          </button>
+          <div class="rb-stack">
+            <button class="rb-small" title="大問を削除"><span class="ico"><svg><use href="#i-q-del"/></svg></span><span>削除</span></button>
+            <button class="rb-small" title="設定タブを開く"><span class="ico"><svg><use href="#i-q-set"/></svg></span><span>設定</span></button>
+            <div class="rb-row">
+              <select class="small-select" title="解答欄の種類">
+                <option>記述・計算</option>
+                <option>数値・短語句</option>
+                <option>選択</option>
+                <option>穴埋め</option>
+                <option>作図・グラフ</option>
+                <option>表</option>
+                <option>証明・記述</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="rb-group-name">解答欄</div>
+      </div>
+
+      <!-- ===== 図形 ===== -->
+      <div class="rb-group">
+        <div class="rb-group-content">
+          <button class="rb-big" title="テキストボックスを挿入">
+            <span class="ico"><svg><use href="#i-textbox"/></svg></span>
+            <span class="lbl two-line">テキスト<br>ボックス</span>
+          </button>
+          <div class="rb-stack">
+            <button class="rb-small" title="画像を挿入"><span class="ico"><svg><use href="#i-image"/></svg></span><span>画像</span></button>
+            <button class="rb-small" title="図形を挿入"><span class="ico"><svg><use href="#i-shape"/></svg></span><span>図形</span></button>
+            <button class="rb-small" title="表を挿入"><span class="ico"><svg><use href="#i-table"/></svg></span><span>表</span></button>
+          </div>
+        </div>
+        <div class="rb-group-name">図形</div>
+      </div>
+
+      <!-- ===== 用紙 (quick toggles) ===== -->
+      <div class="rb-group">
+        <div class="rb-group-content" style="flex-direction:column; gap:2px;">
+          <div class="rb-row">
+            <select id="paperSize" class="small-select" title="用紙サイズ">
+              <option selected>A4</option>
+              <option>B5</option>
+              <option>B4</option>
+              <option>A3</option>
+            </select>
+          </div>
+          <div class="rb-row">
+            <select id="layout" class="small-select" title="向き・段組">
+              <option>縦置き 1段</option>
+              <option selected>縦置き 2段</option>
+              <option>横置き 1段</option>
+              <option>横置き 2段</option>
+              <option>横置き 3段</option>
+            </select>
+          </div>
+          <div class="rb-row">
+            <button id="centerLine" class="toggle is-on" title="段組み時の中央線">
+              <span class="sw"></span><span>中央線</span>
+            </button>
+            <button id="pageNum" class="toggle is-on" title="ページ番号">
+              <span class="sw"></span><span>ページ番号</span>
+            </button>
+          </div>
+        </div>
+        <div class="rb-group-name">用紙</div>
+      </div>
+
+      <!-- ===== 配点表示 ===== -->
+      <div class="rb-group">
+        <div class="rb-group-content" style="flex-direction:column; gap:2px;">
+          <div class="rb-row">
+            <button id="showSubScore" class="toggle" title="小問の配点 (A)">
+              <span class="sw"></span><span>小問配点</span>
+            </button>
+          </div>
+          <div class="rb-row">
+            <button id="showTotalScore" class="toggle" title="大問の合計 (C)">
+              <span class="sw"></span><span>大問合計</span>
+            </button>
+          </div>
+          <div class="rb-row" style="margin-top:auto">
+            <span id="selectedInfo"><span class="dot"></span>選択中: 大問1 (2)</span>
+          </div>
+        </div>
+        <div class="rb-group-name">配点</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============= MAIN AREA ============= -->
+  <div class="main">
+
+    <!-- Navigation pane -->
+    <aside class="nav-pane">
+      <div class="nav-header">
+        <span class="title">ナビゲーション</span>
+        <span class="meta" id="qCount">4問 / 100点</span>
+      </div>
+
+      <div class="nav-tabs">
+        <button class="nav-tab is-active">大問</button>
+        <button class="nav-tab">ヘッダー</button>
+        <button class="nav-tab">設定</button>
+      </div>
+
+      <div class="nav-body" id="questionList">
+
+        <!-- Q1 (selected, expanded) -->
+        <div class="outline-item is-active">
+          <span class="num">1</span>
+          <span class="label">大問 1</span>
+          <span class="meta">記述・5問・25点</span>
+        </div>
+        <div class="q-detail">
+          <div class="det-tabs">
+            <button class="det-tab is-active">問題数</button>
+            <button class="det-tab">問題番号</button>
+            <button class="det-tab">小問</button>
+            <button class="det-tab">線種</button>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>小問数</label>
+              <input type="number" value="5">
+            </div>
+            <div class="field">
+              <label>列数</label>
+              <input type="number" value="1">
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:10px">
+            <label>解答欄の種類</label>
+            <select>
+              <option selected>記述・計算スペース</option>
+              <option>数値・短い語句</option>
+              <option>選択</option>
+              <option>穴埋め</option>
+              <option>作図・グラフ</option>
+              <option>表</option>
+              <option>証明・記述</option>
+            </select>
+          </div>
+          <div class="slider-row">
+            <div class="lbl"><span>行の高さ</span><span>8mm</span></div>
+            <input type="range" min="6" max="20" value="8">
+          </div>
+          <div class="field" style="margin-bottom:10px">
+            <label>大問の合計点</label>
+            <input type="number" value="25">
+          </div>
+          <button class="btn-danger">この大問を削除</button>
+        </div>
+
+        <!-- Q2 (collapsed) -->
+        <div class="outline-item">
+          <span class="num">2</span>
+          <span class="label">大問 2</span>
+          <span class="meta">数値・4問・20点</span>
+        </div>
+
+        <!-- Q3 -->
+        <div class="outline-item">
+          <span class="num">3</span>
+          <span class="label">大問 3</span>
+          <span class="meta">作図・3問・25点</span>
+        </div>
+
+        <!-- Q4 -->
+        <div class="outline-item">
+          <span class="num">4</span>
+          <span class="label">大問 4</span>
+          <span class="meta">証明・1問・30点</span>
+        </div>
+
+        <button class="btn-add">＋ 大問を追加</button>
+
+        <!-- Hidden settings panel (textbox), surfaced when selected -->
+        <div id="textboxSettings" style="display:none; margin-top:14px; padding:10px; border:1px solid var(--line-mid); border-radius:3px; background:#fff;">
+          <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px; font-weight:600">テキストボックス</div>
+          <div class="field-row">
+            <div class="field">
+              <label>枠線</label>
+              <select id="tbBorderStyle">
+                <option>実線</option><option>破線</option><option>点線</option><option>二重線</option><option>なし</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>太さ</label>
+              <select id="tbBorderWidth">
+                <option>0.5pt</option><option selected>1pt</option><option>1.5pt</option><option>2pt</option><option>3pt</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>背景</label>
+            <select id="tbBg">
+              <option>透明</option><option>白</option><option>グレー</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Document canvas -->
+    <div class="canvas-wrap">
+      <div class="ruler-h"></div>
+      <div class="canvas-inner">
+        <div class="paper-stack">
+          <div class="ruler-v"></div>
+
+          <!-- Title input (hidden in ribbon, kept for JS compatibility) -->
+          <input id="title" type="text" value="2学期期末テスト 数学" style="position:absolute; left:-9999px; width:1px; height:1px;">
+
+          <div id="sheetContainer">
+            <div class="sheet">
+
+              <div class="sheet-header">
+                <h1 class="title">2学期期末テスト 数学</h1>
+                <table class="hdr-table">
+                  <tr>
+                    <th>年</th><td></td>
+                    <th>組</th><td></td>
+                    <th>番号</th><td></td>
+                    <th>氏名</th><td class="name"></td>
+                  </tr>
+                </table>
+                <hr class="divider">
+              </div>
+
+              <div class="sheet-body cols-2">
+
+                <!-- 大問1 -->
+                <div class="q-block">
+                  <div class="q-header">1</div>
+                  <div class="q-row"><div class="sub-num">(1)</div><div class="ans-cell writing"><div class="cell-inner"></div></div></div>
+                  <div class="q-row"><div class="sub-num">(2)</div><div class="ans-cell writing"><div class="cell-inner"></div></div></div>
+                  <div class="q-row"><div class="sub-num">(3)</div><div class="ans-cell writing"><div class="cell-inner"></div></div></div>
+                  <div class="q-row"><div class="sub-num">(4)</div><div class="ans-cell writing"><div class="cell-inner"></div></div></div>
+                  <div class="q-row"><div class="sub-num">(5)</div><div class="ans-cell writing"><div class="cell-inner"></div></div></div>
+                </div>
+
+                <!-- 大問2 -->
+                <div class="q-block">
+                  <div class="q-header">2</div>
+                  <div class="q-row-inline cols-2">
+                    <div class="sub-num">(1)</div><div class="ans-cell"><div class="cell-inner"></div></div>
+                    <div class="sub-num">(2)</div><div class="ans-cell"><div class="cell-inner"></div></div>
+                  </div>
+                  <div class="q-row-inline cols-2">
+                    <div class="sub-num">(3)</div><div class="ans-cell"><div class="cell-inner"></div></div>
+                    <div class="sub-num">(4)</div><div class="ans-cell"><div class="cell-inner"></div></div>
+                  </div>
+                </div>
+
+                <!-- 大問3 -->
+                <div class="q-block">
+                  <div class="q-header">3</div>
+                  <div class="q-row"><div class="sub-num">(1)</div><div class="ans-cell drawing"><div class="cell-inner"></div></div></div>
+                  <div class="q-row"><div class="sub-num">(2)</div><div class="ans-cell drawing"><div class="cell-inner"></div></div></div>
+                  <div class="q-row"><div class="sub-num">(3)</div><div class="ans-cell drawing"><div class="cell-inner"></div></div></div>
+                </div>
+
+                <!-- 大問4 -->
+                <div class="q-block">
+                  <div class="q-header">4</div>
+                  <div class="q-row"><div class="sub-num">(1)</div><div class="ans-cell proof"><div class="cell-inner"></div></div></div>
+                </div>
+
+              </div>
+
+              <div class="page-num">1 / 1</div>
+
+              <!-- Floating textbox layer -->
+              <div class="textbox-layer" id="textboxLayer">
+                <div class="floating-textbox border-style-solid" style="left:14mm; top:46mm; width:60mm; height:10mm;">
+                  <div class="tb-content">次の各問いに答えなさい。</div>
+                  <div class="resize-handle"></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div></div>
+  </div>
+
+  <!-- ============= STATUS BAR ============= -->
+  <div class="status">
+    <div class="group">ページ 1 / 1</div>
+    <span class="sep"></span>
+    <div class="group">大問: 4</div>
+    <span class="sep"></span>
+    <div class="group">合計: 100 点</div>
+    <span class="sep"></span>
+    <div class="group">A4 縦置き 2段</div>
+
+    <div class="right">
+      <span class="group"><svg style="width:13px;height:13px;vertical-align:middle"><use href="#i-list"/></svg> プレビュー</span>
+      <span class="sep"></span>
+      <div class="zoom-bar">
+        <span class="btn" title="縮小">−</span>
+        <div class="zoom-track"><div class="zoom-thumb"></div></div>
+        <span class="btn" title="拡大">＋</span>
+        <span class="zoom-val">100%</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* =====================================================================
+   解答用紙メーカー v0.4 — JavaScript（v0.3.1からの移植版）
+   v0.4.0 のWord風UIガワに対して、機能ロジックを統合
+   ===================================================================== */
+
+/* ========= データモデル ========= */
+let data = {
+  title: "2学期期末テスト 数学",
+  questions: [
+    { id: 1, type: "writing", subCount: 5, cols: 1, rowHeight: 8,
+      totalScore: 25, subScores: [5,5,5,5,5], cells: {} },
+    { id: 2, type: "value", subCount: 4, cols: 2, rowHeight: 7,
+      totalScore: 20, subScores: [5,5,5,5], cells: {} },
+    { id: 3, type: "drawing", subCount: 3, cols: 1, rowHeight: 18,
+      totalScore: 25, subScores: [5,10,10], cells: {} },
+    { id: 4, type: "proof", subCount: 1, cols: 1, rowHeight: 50,
+      totalScore: 30, subScores: [30], cells: {} }
+  ],
+  textboxes: [],
+  activeQuestionId: 1
+};
+
+let selectedCell = null;
+let selectedTextbox = null;
+let textboxIdCounter = 1;
+
+/* ========= layout値の正規化（v0.4 UIでは日本語表記） =========
+   旧: "portrait-2" / "landscape-1"
+   新: "縦置き 2段" / "横置き 1段"
+*/
+const LAYOUT_MAP = {
+  "縦置き 1段": { orientation: "portrait", cols: 1 },
+  "縦置き 2段": { orientation: "portrait", cols: 2 },
+  "横置き 1段": { orientation: "landscape", cols: 1 },
+  "横置き 2段": { orientation: "landscape", cols: 2 },
+  "横置き 3段": { orientation: "landscape", cols: 3 }
+};
+
+function getLayoutInfo() {
+  const sel = document.getElementById("layout");
+  if (!sel) return { orientation: "portrait", cols: 2 };
+  const v = sel.value.trim();
+  return LAYOUT_MAP[v] || { orientation: "portrait", cols: 2 };
+}
+
+/* ========= トグル（v0.4 UIでは .is-on クラスを使う） ========= */
+function isToggleOn(id) {
+  const el = document.getElementById(id);
+  return el ? el.classList.contains("is-on") : false;
+}
+
+function setupToggle(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener("click", () => {
+    el.classList.toggle("is-on");
+    render();
+  });
+}
+
+/* ========= 大問リスト（左ナビ） ========= */
+function renderQuestionList() {
+  const container = document.getElementById("questionList");
+  if (!container) return;
+
+  // 既存のoutline-item と q-detail と btn-add を一旦クリア
+  // （textboxSettings は別途維持）
+  const tbSettings = document.getElementById("textboxSettings");
+  container.innerHTML = "";
+
+  data.questions.forEach((q, idx) => {
+    const isActive = q.id === data.activeQuestionId;
+    const typeLabel = {
+      writing: "記述", value: "数値", choice: "選択",
+      fillin: "穴埋め", drawing: "作図", table: "表", proof: "証明"
+    }[q.type] || q.type;
+
+    // 大問見出し
+    const item = document.createElement("div");
+    item.className = "outline-item" + (isActive ? " is-active" : "");
+    item.innerHTML = `
+      <span class="num">${idx + 1}</span>
+      <span class="label">大問 ${idx + 1}</span>
+      <span class="meta">${typeLabel}・${q.subCount}問・${q.totalScore}点</span>
+    `;
+    item.addEventListener("click", () => toggleQuestion(q.id));
+    container.appendChild(item);
+
+    // 展開時の詳細パネル
+    if (isActive) {
+      const detail = document.createElement("div");
+      detail.className = "q-detail";
+      detail.innerHTML = `
+        <div class="det-tabs">
+          <button class="det-tab is-active" data-tab="count">問題数</button>
+          <button class="det-tab" data-tab="num">問題番号</button>
+          <button class="det-tab" data-tab="sub">小問</button>
+          <button class="det-tab" data-tab="line">線種</button>
+        </div>
+
+        <div data-pane="count">
+          <div class="field-row">
+            <div class="field">
+              <label>小問数</label>
+              <input type="number" min="1" max="20" value="${q.subCount}" data-field="subCount">
+            </div>
+            <div class="field">
+              <label>列数</label>
+              <input type="number" min="1" max="4" value="${q.cols}" data-field="cols">
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:10px">
+            <label>解答欄の種類</label>
+            <select data-field="type">
+              <option value="writing"${q.type==='writing'?' selected':''}>記述・計算スペース</option>
+              <option value="value"${q.type==='value'?' selected':''}>数値・短い語句</option>
+              <option value="choice"${q.type==='choice'?' selected':''}>選択</option>
+              <option value="fillin"${q.type==='fillin'?' selected':''}>穴埋め</option>
+              <option value="drawing"${q.type==='drawing'?' selected':''}>作図・グラフ</option>
+              <option value="table"${q.type==='table'?' selected':''}>表</option>
+              <option value="proof"${q.type==='proof'?' selected':''}>証明・記述</option>
+            </select>
+          </div>
+          <div class="slider-row">
+            <div class="lbl"><span>行の高さ</span><span data-rh-label>${q.rowHeight}mm</span></div>
+            <input type="range" min="5" max="80" value="${q.rowHeight}" data-field="rowHeight">
+          </div>
+          <div class="field" style="margin-bottom:10px">
+            <label>大問の合計点</label>
+            <input type="number" value="${q.totalScore}" data-field="totalScore">
+          </div>
+          <button class="btn-danger" data-action="delete">この大問を削除</button>
+        </div>
+
+        <div data-pane="num" style="display:none">
+          <div class="field">
+            <label>番号形式</label>
+            <select>
+              <option>(1), (2), (3)…</option>
+              <option>①, ②, ③…</option>
+              <option>ア, イ, ウ…</option>
+            </select>
+          </div>
+        </div>
+
+        <div data-pane="sub" style="display:none">
+          <div style="font-size:11px;color:var(--text-secondary)">小問ごとの個別設定はフェーズ2で実装予定です。</div>
+        </div>
+
+        <div data-pane="line" style="display:none">
+          <div class="field-row">
+            <div class="field">
+              <label>外枠</label>
+              <select><option>実線（太）</option><option>実線（細）</option></select>
+            </div>
+            <div class="field">
+              <label>区切り線</label>
+              <select><option>実線</option><option>破線</option><option>なし</option></select>
+            </div>
+          </div>
+        </div>
+      `;
+      container.appendChild(detail);
+
+      // タブ切替
+      detail.querySelectorAll(".det-tab").forEach(tab => {
+        tab.addEventListener("click", (e) => {
+          e.stopPropagation();
+          detail.querySelectorAll(".det-tab").forEach(t => t.classList.remove("is-active"));
+          tab.classList.add("is-active");
+          detail.querySelectorAll("[data-pane]").forEach(p => p.style.display = "none");
+          const pane = detail.querySelector(`[data-pane="${tab.dataset.tab}"]`);
+          if (pane) pane.style.display = "";
+        });
+      });
+
+      // 入力フィールド
+      detail.querySelectorAll("[data-field]").forEach(input => {
+        const handler = () => updateQ(q.id, input.dataset.field, input.value);
+        if (input.type === "range") {
+          input.addEventListener("input", () => {
+            const label = detail.querySelector("[data-rh-label]");
+            if (label) label.textContent = input.value + "mm";
+            updateQ(q.id, "rowHeight", input.value);
+          });
+        } else {
+          input.addEventListener("change", handler);
+        }
+      });
+
+      // 削除ボタン
+      const delBtn = detail.querySelector('[data-action="delete"]');
+      if (delBtn) delBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        deleteQuestion(q.id);
+      });
+    }
+  });
+
+  // 大問追加ボタン
+  const addBtn = document.createElement("button");
+  addBtn.className = "btn-add";
+  addBtn.textContent = "＋ 大問を追加";
+  addBtn.addEventListener("click", addQuestion);
+  container.appendChild(addBtn);
+
+  // テキストボックス設定パネルを末尾に再追加
+  if (tbSettings) container.appendChild(tbSettings);
+
+  // qCount 更新
+  const total = data.questions.reduce((s, q) => s + Number(q.totalScore), 0);
+  const cnt = document.getElementById("qCount");
+  if (cnt) cnt.textContent = `${data.questions.length}問 / ${total}点`;
+
+  // ステータスバーも更新
+  updateStatusBar();
+}
+
+function toggleQuestion(id) {
+  data.activeQuestionId = (data.activeQuestionId === id) ? null : id;
+  renderQuestionList();
+}
+
+function updateQ(id, field, value) {
+  const q = data.questions.find(q => q.id === id);
+  if (!q) return;
+  if (field === "subCount") {
+    const newCount = Number(value);
+    q.subCount = newCount;
+    while (q.subScores.length < newCount) q.subScores.push(5);
+    q.subScores = q.subScores.slice(0, newCount);
+  } else if (field === "cols" || field === "rowHeight" || field === "totalScore") {
+    q[field] = Number(value);
+  } else {
+    q[field] = value;
+  }
+  renderQuestionList();
+  render();
+}
+
+function addQuestion() {
+  const newId = Math.max(...data.questions.map(q => q.id), 0) + 1;
+  data.questions.push({
+    id: newId, type: "writing", subCount: 3, cols: 1, rowHeight: 8,
+    totalScore: 0, subScores: [0,0,0], cells: {}
+  });
+  data.activeQuestionId = newId;
+  renderQuestionList();
+  render();
+}
+
+function deleteQuestion(id) {
+  if (!confirm("この大問を削除しますか？")) return;
+  data.questions = data.questions.filter(q => q.id !== id);
+  if (data.activeQuestionId === id) data.activeQuestionId = data.questions[0]?.id || null;
+  renderQuestionList();
+  render();
+}
+
+/* ========= シート描画 ========= */
+function render() {
+  const savedCell = selectedCell ? { qId: selectedCell.qId, subIdx: selectedCell.subIdx } : null;
+  const savedTextboxId = selectedTextbox ? selectedTextbox.id : null;
+
+  const container = document.getElementById("sheetContainer");
+  if (!container) return;
+
+  const { orientation, cols } = getLayoutInfo();
+  const centerLine = isToggleOn("centerLine");
+  const showPageNum = isToggleOn("pageNum");
+  const showSubScore = isToggleOn("showSubScore");
+  const showTotalScore = isToggleOn("showTotalScore");
+
+  const titleInput = document.getElementById("title");
+  const title = titleInput ? titleInput.value : "解答用紙";
+
+  // 用紙の組み立て
+  const sheet = document.createElement("div");
+  sheet.className = "sheet" + (orientation === "landscape" ? " landscape" : "");
+
+  let html = `
+    <div class="sheet-header">
+      <h1 class="title">${escapeHtml(title)}</h1>
+      <table class="hdr-table">
+        <tr>
+          <th>年</th><td></td>
+          <th>組</th><td></td>
+          <th>番号</th><td></td>
+          <th>氏名</th><td class="name"></td>
+        </tr>
+      </table>
+      <hr class="divider">
+    </div>
+    <div class="sheet-body cols-${cols}${centerLine && cols > 1 ? ' has-divider' : ''}">
+  `;
+
+  data.questions.forEach((q, idx) => {
+    const qNum = idx + 1;
+    html += `<div class="q-block">`;
+    if (showTotalScore) {
+      html += `<div class="q-header" style="display:flex;justify-content:space-between;align-items:center"><span>${qNum}</span><span style="font-size:9pt;color:var(--text-secondary)">/ ${q.totalScore}点</span></div>`;
+    } else {
+      html += `<div class="q-header">${qNum}</div>`;
+    }
+
+    if (q.cols === 1) {
+      for (let i = 0; i < q.subCount; i++) {
+        const cellData = q.cells[i] || {};
+        const ansClass = q.type === "writing" ? "writing"
+                       : q.type === "drawing" ? "drawing"
+                       : q.type === "proof" ? "proof" : "";
+        const heightStyle = q.type === "value" ? "" : `min-height:${q.rowHeight}mm;`;
+        const vAlignClass = cellData.vAlign ? `valign-${cellData.vAlign}` : "valign-top";
+        const innerHtml = cellData.html || "";
+        const scoreCell = showSubScore
+          ? `<div class="sub-score">${q.subScores[i] || 0}</div>`
+          : "";
+
+        html += `<div class="q-row${showSubScore ? ' with-score' : ''}">
+          <div class="sub-num">(${i+1})</div>
+          <div class="ans-cell ${ansClass} ${vAlignClass}" data-qid="${q.id}" data-sub="${i}" style="${heightStyle}">
+            <div class="cell-inner" contenteditable="true">${innerHtml}</div>
+          </div>
+          ${scoreCell}
+        </div>`;
+      }
+    } else {
+      const rows = Math.ceil(q.subCount / q.cols);
+      for (let r = 0; r < rows; r++) {
+        html += `<div class="q-row-inline cols-${q.cols}">`;
+        for (let c = 0; c < q.cols; c++) {
+          const subIdx = r * q.cols + c;
+          if (subIdx >= q.subCount) break;
+          const cellData = q.cells[subIdx] || {};
+          const vAlignClass = cellData.vAlign ? `valign-${cellData.vAlign}` : "valign-middle";
+          const innerHtml = cellData.html || "";
+          html += `<div class="sub-num">(${subIdx+1})</div>
+            <div class="ans-cell ${vAlignClass}" data-qid="${q.id}" data-sub="${subIdx}" style="min-height:${q.rowHeight}mm;">
+              <div class="cell-inner" contenteditable="true">${innerHtml}</div>
+            </div>`;
+          if (showSubScore) {
+            html += `<div class="sub-score">${q.subScores[subIdx] || 0}</div>`;
+          }
+        }
+        html += `</div>`;
+      }
+    }
+    html += `</div>`;
+  });
+
+  html += `</div>`;
+
+  if (showPageNum) {
+    html += `<div class="page-num">1 / 1</div>`;
+  }
+
+  html += `<div class="textbox-layer" id="textboxLayer"></div>`;
+
+  sheet.innerHTML = html;
+  container.innerHTML = "";
+  container.appendChild(sheet);
+
+  // セル選択ハンドラを登録
+  sheet.querySelectorAll(".ans-cell").forEach(cell => {
+    cell.addEventListener("mousedown", (e) => {
+      if (!e.target.classList.contains("cell-inner")) {
+        doSelectCell(cell);
+      }
+    });
+    const inner = cell.querySelector(".cell-inner");
+    if (inner) {
+      inner.addEventListener("focus", () => doSelectCell(cell));
+      inner.addEventListener("input", () => onCellInput(inner));
+      inner.addEventListener("keyup", updateFormatBar);
+      inner.addEventListener("mouseup", updateFormatBar);
+    }
+  });
+
+  // テキストボックスを再描画
+  renderTextboxes();
+
+  // 選択状態を復元
+  if (savedCell) {
+    const el = sheet.querySelector(`.ans-cell[data-qid="${savedCell.qId}"][data-sub="${savedCell.subIdx}"]`);
+    if (el) {
+      el.classList.add("selected");
+      selectedCell = { qId: savedCell.qId, subIdx: savedCell.subIdx, element: el };
+      updateFormatBar();
+    }
+  }
+  if (savedTextboxId) {
+    const tb = document.querySelector(`.floating-textbox[data-id="${savedTextboxId}"]`);
+    if (tb) {
+      tb.classList.add("selected");
+      selectedTextbox = data.textboxes.find(t => t.id === savedTextboxId);
+      updateFormatBar();
+    }
+  }
+
+  updateStatusBar();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[c]);
+}
+
+/* ========= ステータスバー更新 ========= */
+function updateStatusBar() {
+  const status = document.querySelector(".status");
+  if (!status) return;
+
+  const total = data.questions.reduce((s, q) => s + Number(q.totalScore), 0);
+  const { orientation, cols } = getLayoutInfo();
+  const paperSize = document.getElementById("paperSize")?.value || "A4";
+  const orientLabel = orientation === "portrait" ? "縦置き" : "横置き";
+
+  const groups = status.querySelectorAll(":scope > .group");
+  if (groups.length >= 4) {
+    groups[0].textContent = `ページ 1 / 1`;
+    groups[1].textContent = `大問: ${data.questions.length}`;
+    groups[2].textContent = `合計: ${total} 点`;
+    groups[3].textContent = `${paperSize} ${orientLabel} ${cols}段`;
+  }
+}
+
+/* ========= セル選択 ========= */
+function doSelectCell(cellOuter) {
+  // テキストボックスの選択を解除
+  document.querySelectorAll(".floating-textbox.selected").forEach(t => {
+    t.classList.remove("selected", "editing");
+    const c = t.querySelector(".tb-content");
+    if (c) c.setAttribute("contenteditable", "false");
+  });
+  selectedTextbox = null;
+  const tbSettings = document.getElementById("textboxSettings");
+  if (tbSettings) tbSettings.style.display = "none";
+
+  document.querySelectorAll(".ans-cell.selected").forEach(c => c.classList.remove("selected"));
+  cellOuter.classList.add("selected");
+  const qId = Number(cellOuter.dataset.qid);
+  const subIdx = Number(cellOuter.dataset.sub);
+  selectedCell = { qId, subIdx, element: cellOuter };
+  updateFormatBar();
+}
+
+function onCellInput(inner) {
+  const outer = inner.closest(".ans-cell");
+  if (!outer) return;
+  const qId = Number(outer.dataset.qid);
+  const subIdx = Number(outer.dataset.sub);
+  const q = data.questions.find(q => q.id === qId);
+  if (!q) return;
+  if (!q.cells[subIdx]) q.cells[subIdx] = {};
+  q.cells[subIdx].html = inner.innerHTML;
+}
+
+/* ========= フォーマット適用 ========= */
+function hasActiveEditTarget() { return selectedCell || selectedTextbox; }
+
+function getActiveEditElement() {
+  if (selectedCell) return selectedCell.element.querySelector(".cell-inner");
+  if (selectedTextbox) {
+    const tb = document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"]`);
+    return tb ? tb.querySelector(".tb-content") : null;
+  }
+  return null;
+}
+
+function execFormat(cmd) {
+  if (!hasActiveEditTarget()) return;
+  document.execCommand(cmd, false, null);
+  saveCellState();
+  updateFormatBar();
+}
+
+function applyFontFamily(value) {
+  if (!hasActiveEditTarget()) return;
+  const fontName = value === "mincho" ? "Hiragino Mincho ProN" : "Hiragino Sans";
+  document.execCommand("fontName", false, fontName);
+  saveCellState();
+  updateFormatBar();
+}
+
+function applyFontSize(size) {
+  if (!hasActiveEditTarget()) return;
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  if (range.collapsed) {
+    document.execCommand("fontSize", false, "7");
+    const target = getActiveEditElement();
+    if (target) {
+      target.querySelectorAll('font[size="7"]').forEach(f => {
+        const span = document.createElement("span");
+        span.style.fontSize = size;
+        span.innerHTML = f.innerHTML;
+        f.replaceWith(span);
+      });
+    }
+  } else {
+    const span = document.createElement("span");
+    span.style.fontSize = size;
+    try {
+      span.appendChild(range.extractContents());
+      range.insertNode(span);
+      sel.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.selectNodeContents(span);
+      sel.addRange(newRange);
+    } catch(err) { console.error(err); }
+  }
+  saveCellState();
+  updateFormatBar();
+}
+
+function setAlign(align) {
+  const target = getActiveEditElement();
+  if (!target) return;
+  if (align === "justify") {
+    target.classList.add("text-justify-all");
+    target.style.textAlign = "";
+  } else {
+    target.classList.remove("text-justify-all");
+    target.style.textAlign = align;
+  }
+  if (selectedCell) {
+    const q = data.questions.find(q => q.id === selectedCell.qId);
+    if (!q.cells[selectedCell.subIdx]) q.cells[selectedCell.subIdx] = {};
+    q.cells[selectedCell.subIdx].align = align;
+    q.cells[selectedCell.subIdx].html = target.innerHTML;
+  } else if (selectedTextbox) {
+    selectedTextbox.align = align;
+    selectedTextbox.html = target.innerHTML;
+  }
+  updateFormatBar();
+}
+
+function setVAlign(vAlign) {
+  if (!selectedCell) return;
+  const el = selectedCell.element;
+  el.classList.remove("valign-top", "valign-middle", "valign-bottom");
+  el.classList.add(`valign-${vAlign}`);
+  const q = data.questions.find(q => q.id === selectedCell.qId);
+  if (!q.cells[selectedCell.subIdx]) q.cells[selectedCell.subIdx] = {};
+  q.cells[selectedCell.subIdx].vAlign = vAlign;
+  updateFormatBar();
+}
+
+function saveCellState() {
+  if (selectedCell) {
+    const inner = selectedCell.element.querySelector(".cell-inner");
+    if (!inner) return;
+    const q = data.questions.find(q => q.id === selectedCell.qId);
+    if (!q.cells[selectedCell.subIdx]) q.cells[selectedCell.subIdx] = {};
+    q.cells[selectedCell.subIdx].html = inner.innerHTML;
+  } else if (selectedTextbox) {
+    const tb = document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"] .tb-content`);
+    if (tb) selectedTextbox.html = tb.innerHTML;
+  }
+}
+
+function clearCellText() {
+  const target = getActiveEditElement();
+  if (!target) return;
+  target.innerHTML = "";
+  saveCellState();
+  target.focus();
+}
+
+function deleteSelected() {
+  if (selectedTextbox) {
+    data.textboxes = data.textboxes.filter(t => t.id !== selectedTextbox.id);
+    selectedTextbox = null;
+    const ts = document.getElementById("textboxSettings");
+    if (ts) ts.style.display = "none";
+    renderTextboxes();
+    updateFormatBar();
+  }
+}
+
+/* ========= フォーマットバー状態更新 ========= */
+function updateFormatBar() {
+  const hasSel = selectedCell || selectedTextbox;
+  const info = document.getElementById("selectedInfo");
+
+  if (selectedTextbox) {
+    if (info) info.innerHTML = `<span class="dot"></span>選択中: テキストボックス #${selectedTextbox.id}`;
+  } else if (selectedCell) {
+    const qIdx = data.questions.findIndex(q => q.id === selectedCell.qId) + 1;
+    if (info) info.innerHTML = `<span class="dot"></span>選択中: 大問${qIdx} (${selectedCell.subIdx + 1})`;
+  } else {
+    if (info) info.innerHTML = `<span class="dot"></span>未選択`;
+    setActiveBtn("fmtBold", false);
+    setActiveBtn("fmtItalic", false);
+    setActiveBtn("fmtUnderline", false);
+    return;
+  }
+
+  try {
+    setActiveBtn("fmtBold", document.queryCommandState("bold"));
+    setActiveBtn("fmtItalic", document.queryCommandState("italic"));
+    setActiveBtn("fmtUnderline", document.queryCommandState("underline"));
+  } catch(e) {}
+
+  // 水平配置
+  let align = "left";
+  const target = getActiveEditElement();
+  if (target) {
+    if (target.classList.contains("text-justify-all")) align = "justify";
+    else align = target.style.textAlign || "left";
+  }
+  setActiveBtn("fmtAlignLeft", align === "left");
+  setActiveBtn("fmtAlignCenter", align === "center");
+  setActiveBtn("fmtAlignRight", align === "right");
+  setActiveBtn("fmtAlignJustify", align === "justify");
+
+  // 垂直配置
+  let vAlign = "top";
+  if (selectedCell) {
+    if (selectedCell.element.classList.contains("valign-middle")) vAlign = "middle";
+    else if (selectedCell.element.classList.contains("valign-bottom")) vAlign = "bottom";
+  }
+  setActiveBtn("fmtVAlignTop", vAlign === "top");
+  setActiveBtn("fmtVAlignMiddle", vAlign === "middle");
+  setActiveBtn("fmtVAlignBottom", vAlign === "bottom");
+
+  // 垂直配置はテキストボックスでは無効
+  ["fmtVAlignTop", "fmtVAlignMiddle", "fmtVAlignBottom"].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.disabled = !selectedCell;
+  });
+}
+
+function setActiveBtn(id, on) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  if (on) btn.classList.add("is-active");
+  else btn.classList.remove("is-active");
+}
+
+/* ========= テキストボックス ========= */
+function addTextbox() {
+  const tb = {
+    id: textboxIdCounter++,
+    x: 14, y: 60, w: 60, h: 14,
+    html: "テキストを入力",
+    borderStyle: "solid", borderWidth: "0.5pt",
+    bg: "transparent", align: "left"
+  };
+  data.textboxes.push(tb);
+  renderTextboxes();
+  setTimeout(() => {
+    const el = document.querySelector(`.floating-textbox[data-id="${tb.id}"]`);
+    if (el) {
+      document.querySelectorAll(".floating-textbox.selected").forEach(t => t.classList.remove("selected"));
+      document.querySelectorAll(".ans-cell.selected").forEach(c => c.classList.remove("selected"));
+      selectedCell = null;
+      el.classList.add("selected");
+      selectedTextbox = tb;
+      const ts = document.getElementById("textboxSettings");
+      if (ts) ts.style.display = "";
+      syncTextboxSettingsUI(tb);
+      updateFormatBar();
+    }
+  }, 50);
+}
+
+function syncTextboxSettingsUI(tb) {
+  const styleMap = { solid: "実線", dashed: "破線", dotted: "点線", double: "二重線", none: "なし" };
+  const bgMap = { transparent: "透明", white: "白", gray: "グレー" };
+
+  const bs = document.getElementById("tbBorderStyle");
+  if (bs) {
+    const label = styleMap[tb.borderStyle] || "実線";
+    Array.from(bs.options).forEach(o => { if (o.textContent === label) bs.value = o.value; });
+    bs.value = label; // selectのvalueはoptionのtext
+  }
+  const bw = document.getElementById("tbBorderWidth");
+  if (bw) bw.value = tb.borderWidth;
+  const bg = document.getElementById("tbBg");
+  if (bg) bg.value = bgMap[tb.bg] || "透明";
+}
+
+function renderTextboxes() {
+  const layer = document.getElementById("textboxLayer");
+  if (!layer) return;
+  layer.innerHTML = "";
+  data.textboxes.forEach(tb => {
+    if (!tb.borderStyle) tb.borderStyle = "solid";
+    if (!tb.borderWidth) tb.borderWidth = "0.5pt";
+
+    const el = document.createElement("div");
+    el.className = `floating-textbox border-style-${tb.borderStyle} bg-${tb.bg}`;
+    el.dataset.id = tb.id;
+    el.style.left = tb.x + "mm";
+    el.style.top = tb.y + "mm";
+    el.style.width = tb.w + "mm";
+    el.style.height = tb.h + "mm";
+    if (tb.borderStyle !== "none") el.style.borderWidth = tb.borderWidth;
+
+    el.innerHTML = `<div class="tb-content" contenteditable="false" style="text-align:${tb.align || 'left'}">${tb.html}</div><div class="resize-handle"></div>`;
+    layer.appendChild(el);
+    setupTextboxBehavior(el, tb);
+  });
+}
+
+function setupTextboxBehavior(el, tb) {
+  let isDragging = false, isResizing = false;
+  let dragStartX, dragStartY, origX, origY;
+  let resizeStartX, resizeStartY, origW, origH;
+
+  el.addEventListener("mousedown", (e) => {
+    if (e.target.classList.contains("resize-handle")) {
+      isResizing = true;
+      resizeStartX = e.clientX; resizeStartY = e.clientY;
+      origW = tb.w; origH = tb.h;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    if (el.classList.contains("editing")) return;
+
+    document.querySelectorAll(".ans-cell.selected").forEach(c => c.classList.remove("selected"));
+    selectedCell = null;
+
+    document.querySelectorAll(".floating-textbox.selected").forEach(t => {
+      if (t !== el) {
+        t.classList.remove("selected", "editing");
+        const c = t.querySelector(".tb-content");
+        if (c) c.setAttribute("contenteditable", "false");
+      }
+    });
+    el.classList.add("selected");
+    selectedTextbox = tb;
+    const ts = document.getElementById("textboxSettings");
+    if (ts) ts.style.display = "";
+    syncTextboxSettingsUI(tb);
+    updateFormatBar();
+
+    isDragging = true;
+    dragStartX = e.clientX; dragStartY = e.clientY;
+    origX = tb.x; origY = tb.y;
+    e.preventDefault();
+  });
+
+  el.addEventListener("dblclick", (e) => {
+    el.classList.add("editing");
+    const content = el.querySelector(".tb-content");
+    content.setAttribute("contenteditable", "true");
+    content.focus();
+    const range = document.createRange();
+    range.selectNodeContents(content);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    e.stopPropagation();
+  });
+
+  const content = el.querySelector(".tb-content");
+  content.addEventListener("input", () => { tb.html = content.innerHTML; });
+  content.addEventListener("keyup", updateFormatBar);
+  content.addEventListener("mouseup", updateFormatBar);
+  content.addEventListener("focus", () => {
+    selectedTextbox = tb;
+    selectedCell = null;
+    updateFormatBar();
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    const mmRatio = 25.4 / 96;
+    if (isDragging) {
+      const dx = (e.clientX - dragStartX) * mmRatio;
+      const dy = (e.clientY - dragStartY) * mmRatio;
+      tb.x = Math.max(0, origX + dx);
+      tb.y = Math.max(0, origY + dy);
+      el.style.left = tb.x + "mm";
+      el.style.top = tb.y + "mm";
+    } else if (isResizing) {
+      const dx = (e.clientX - resizeStartX) * mmRatio;
+      const dy = (e.clientY - resizeStartY) * mmRatio;
+      tb.w = Math.max(20, origW + dx);
+      tb.h = Math.max(10, origH + dy);
+      el.style.width = tb.w + "mm";
+      el.style.height = tb.h + "mm";
+    }
+  });
+  document.addEventListener("mouseup", () => { isDragging = false; isResizing = false; });
+}
+
+function updateTextboxStyle(prop, rawValue) {
+  if (!selectedTextbox) return;
+
+  // 日本語→英語変換
+  const styleMap = { "実線": "solid", "破線": "dashed", "点線": "dotted", "二重線": "double", "なし": "none" };
+  const bgMap = { "透明": "transparent", "白": "white", "グレー": "gray" };
+
+  let value = rawValue;
+  if (prop === "borderStyle" && styleMap[rawValue]) value = styleMap[rawValue];
+  if (prop === "bg" && bgMap[rawValue]) value = bgMap[rawValue];
+
+  selectedTextbox[prop] = value;
+  const el = document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"]`);
+  if (!el) return;
+
+  if (prop === "borderStyle") {
+    el.classList.remove("border-style-none","border-style-solid","border-style-dashed","border-style-dotted","border-style-double");
+    el.classList.add(`border-style-${value}`);
+    el.style.borderWidth = value === "none" ? "" : (selectedTextbox.borderWidth || "0.5pt");
+  } else if (prop === "borderWidth") {
+    if (selectedTextbox.borderStyle !== "none") el.style.borderWidth = value;
+  } else if (prop === "bg") {
+    el.classList.remove("bg-transparent","bg-white","bg-gray");
+    el.classList.add(`bg-${value}`);
+  }
+}
+
+/* ========= 保存・読込 ========= */
+function exportJSON() {
+  const dataToSave = {
+    ...data,
+    textboxIdCounter,
+    settings: {
+      title: document.getElementById("title")?.value || "",
+      paperSize: document.getElementById("paperSize")?.value || "A4",
+      layout: document.getElementById("layout")?.value || "縦置き 2段",
+      centerLine: isToggleOn("centerLine"),
+      pageNum: isToggleOn("pageNum"),
+      showSubScore: isToggleOn("showSubScore"),
+      showTotalScore: isToggleOn("showTotalScore")
+    }
+  };
+  const blob = new Blob([JSON.stringify(dataToSave, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = (dataToSave.settings.title || "解答用紙") + ".json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importJSON() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "application/json";
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const loaded = JSON.parse(e.target.result);
+      data.questions = loaded.questions || data.questions;
+      data.textboxes = loaded.textboxes || [];
+      textboxIdCounter = loaded.textboxIdCounter || (data.textboxes.length + 1);
+      data.activeQuestionId = loaded.activeQuestionId || (data.questions[0]?.id ?? null);
+      if (loaded.settings) {
+        const titleEl = document.getElementById("title");
+        if (titleEl) titleEl.value = loaded.settings.title || "";
+        const ps = document.getElementById("paperSize");
+        if (ps) ps.value = loaded.settings.paperSize || "A4";
+        const lo = document.getElementById("layout");
+        if (lo) lo.value = loaded.settings.layout || "縦置き 2段";
+        ["centerLine","pageNum","showSubScore","showTotalScore"].forEach(key => {
+          const sw = document.getElementById(key);
+          if (!sw) return;
+          if (loaded.settings[key]) sw.classList.add("is-on");
+          else sw.classList.remove("is-on");
+        });
+      }
+      renderQuestionList();
+      render();
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+/* ========= イベント登録 ========= */
+function bindEvents() {
+  // トグル
+  setupToggle("centerLine");
+  setupToggle("pageNum");
+  setupToggle("showSubScore");
+  setupToggle("showTotalScore");
+
+  // 用紙設定
+  ["paperSize","layout"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", render);
+  });
+
+  // フォント
+  const ff = document.getElementById("fmtFontFamily");
+  if (ff) ff.addEventListener("change", () => applyFontFamily(ff.value));
+  const fs = document.getElementById("fmtFontSize");
+  if (fs) fs.addEventListener("change", () => applyFontSize(fs.value));
+
+  // 書式ボタン
+  const bind = (id, fn) => { const b = document.getElementById(id); if (b) b.addEventListener("click", fn); };
+  bind("fmtBold", () => execFormat("bold"));
+  bind("fmtItalic", () => execFormat("italic"));
+  bind("fmtUnderline", () => execFormat("underline"));
+  bind("fmtAlignLeft", () => setAlign("left"));
+  bind("fmtAlignCenter", () => setAlign("center"));
+  bind("fmtAlignRight", () => setAlign("right"));
+  bind("fmtAlignJustify", () => setAlign("justify"));
+  bind("fmtVAlignTop", () => setVAlign("top"));
+  bind("fmtVAlignMiddle", () => setVAlign("middle"));
+  bind("fmtVAlignBottom", () => setVAlign("bottom"));
+  bind("fmtClear", clearCellText);
+
+  // テキストボックス設定
+  const tbStyle = document.getElementById("tbBorderStyle");
+  if (tbStyle) tbStyle.addEventListener("change", () => updateTextboxStyle("borderStyle", tbStyle.value));
+  const tbWidth = document.getElementById("tbBorderWidth");
+  if (tbWidth) tbWidth.addEventListener("change", () => updateTextboxStyle("borderWidth", tbWidth.value));
+  const tbBg = document.getElementById("tbBg");
+  if (tbBg) tbBg.addEventListener("change", () => updateTextboxStyle("bg", tbBg.value));
+
+  // リボン上部右のアクション（保存・読込・印刷）
+  const ribbonActions = document.querySelectorAll(".ribbon-tabs-right .small-btn");
+  if (ribbonActions.length >= 3) {
+    ribbonActions[0].addEventListener("click", exportJSON);
+    ribbonActions[1].addEventListener("click", importJSON);
+    ribbonActions[2].addEventListener("click", () => window.print());
+  }
+
+  // 「解答欄」グループの大問追加・削除・テキストボックス
+  const ribbonBigs = document.querySelectorAll(".rb-big");
+  ribbonBigs.forEach(btn => {
+    const title = btn.getAttribute("title") || "";
+    if (title.includes("大問を追加")) btn.addEventListener("click", addQuestion);
+    if (title.includes("テキストボックス")) btn.addEventListener("click", addTextbox);
+  });
+
+  // 「解答欄」グループ内の小ボタン（削除など）
+  document.querySelectorAll(".rb-small").forEach(btn => {
+    const title = btn.getAttribute("title") || "";
+    if (title.includes("大問を削除")) {
+      btn.addEventListener("click", () => {
+        if (data.activeQuestionId) deleteQuestion(data.activeQuestionId);
+      });
+    }
+  });
+
+  // ステータスバーのページ・大問数等の更新
+  // 用紙設定変更で更新
+  ["paperSize","layout"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", updateStatusBar);
+  });
+
+  // 外側クリックで選択解除
+  document.addEventListener("mousedown", (e) => {
+    if (!e.target.closest(".ans-cell") &&
+        !e.target.closest(".ribbon-body") &&
+        !e.target.closest(".ribbon-tabs") &&
+        !e.target.closest(".floating-textbox") &&
+        !e.target.closest(".nav-pane") &&
+        !e.target.closest(".titlebar") &&
+        !e.target.closest(".status")) {
+      document.querySelectorAll(".ans-cell.selected").forEach(c => c.classList.remove("selected"));
+      document.querySelectorAll(".floating-textbox.selected").forEach(t => {
+        t.classList.remove("selected", "editing");
+        const c = t.querySelector(".tb-content");
+        if (c) c.setAttribute("contenteditable", "false");
+      });
+      selectedCell = null;
+      selectedTextbox = null;
+      const ts = document.getElementById("textboxSettings");
+      if (ts) ts.style.display = "none";
+      updateFormatBar();
+    }
+  });
+
+  // Delete キーでテキストボックス削除
+  document.addEventListener("keydown", (e) => {
+    if ((e.key === "Delete" || e.key === "Backspace") && selectedTextbox) {
+      const el = document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"]`);
+      if (el && !el.classList.contains("editing")) {
+        deleteSelected();
+        e.preventDefault();
+      }
+    }
+  });
+}
+
+/* ========= 初期化 ========= */
+document.addEventListener("DOMContentLoaded", () => {
+  bindEvents();
+  renderQuestionList();
+  render();
+});
+</script>
+
+</body>
+</html>
