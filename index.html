@@ -1384,6 +1384,7 @@ const HISTORY_LIMIT = 50;
 let undoStack = [];
 let redoStack = [];
 let activeHistorySnapshot = null;
+let historyCommitTimer = null;
 
 /* ========= layout値の正規化（v0.4 UIでは日本語表記） =========
    旧: "portrait-2" / "landscape-1"
@@ -1468,10 +1469,24 @@ function beginHistoryInteraction() {
 
 function commitHistoryInteraction() {
   if (!activeHistorySnapshot) return;
+  if (historyCommitTimer) {
+    clearTimeout(historyCommitTimer);
+    historyCommitTimer = null;
+  }
   if (!snapshotsEqual(activeHistorySnapshot, createHistorySnapshot())) {
     pushUndoSnapshot(activeHistorySnapshot);
   }
   activeHistorySnapshot = null;
+}
+
+function scheduleHistoryInteractionCommit(delay = 500) {
+  if (historyCommitTimer) clearTimeout(historyCommitTimer);
+  historyCommitTimer = setTimeout(commitHistoryInteraction, delay);
+}
+
+function recordEditCommandHistory() {
+  commitHistoryInteraction();
+  recordHistory();
 }
 
 function applySettingsSnapshot(settings) {
@@ -1495,6 +1510,10 @@ function restoreHistorySnapshot(snapshot) {
   selectedCell = null;
   selectedTextbox = null;
   activeHistorySnapshot = null;
+  if (historyCommitTimer) {
+    clearTimeout(historyCommitTimer);
+    historyCommitTimer = null;
+  }
   applySettingsSnapshot(snapshot.settings);
   renderQuestionList();
   render();
@@ -1883,6 +1902,7 @@ function render() {
     if (inner) {
       inner.addEventListener("focus", () => doSelectCell(cell));
       inner.addEventListener("input", () => onCellInput(inner));
+      inner.addEventListener("blur", commitHistoryInteraction);
       inner.addEventListener("keyup", updateFormatBar);
       inner.addEventListener("mouseup", updateFormatBar);
     }
@@ -1976,12 +1996,14 @@ function doSelectCell(cellOuter) {
 function onCellInput(inner) {
   const outer = inner.closest(".ans-cell");
   if (!outer) return;
+  beginHistoryInteraction();
   const qId = Number(outer.dataset.qid);
   const subIdx = Number(outer.dataset.sub);
   const q = data.questions.find(q => q.id === qId);
   if (!q) return;
   if (!q.cells[subIdx]) q.cells[subIdx] = {};
   q.cells[subIdx].html = inner.innerHTML;
+  scheduleHistoryInteractionCommit();
 }
 
 /* ========= フォーマット適用 ========= */
@@ -1998,6 +2020,7 @@ function getActiveEditElement() {
 
 function execFormat(cmd) {
   if (!hasActiveEditTarget()) return;
+  recordEditCommandHistory();
   document.execCommand(cmd, false, null);
   saveCellState();
   updateFormatBar();
@@ -2005,6 +2028,7 @@ function execFormat(cmd) {
 
 function applyFontFamily(value) {
   if (!hasActiveEditTarget()) return;
+  recordEditCommandHistory();
   const fontName = value === "mincho" ? "Hiragino Mincho ProN" : "Hiragino Sans";
   document.execCommand("fontName", false, fontName);
   saveCellState();
@@ -2013,6 +2037,7 @@ function applyFontFamily(value) {
 
 function applyFontSize(size) {
   if (!hasActiveEditTarget()) return;
+  recordEditCommandHistory();
   const sel = window.getSelection();
   if (!sel.rangeCount) return;
   const range = sel.getRangeAt(0);
@@ -2046,6 +2071,7 @@ function applyFontSize(size) {
 function setAlign(align) {
   const target = getActiveEditElement();
   if (!target) return;
+  recordEditCommandHistory();
   if (align === "justify") {
     target.classList.add("text-justify-all");
     target.style.textAlign = "";
@@ -2067,6 +2093,7 @@ function setAlign(align) {
 
 function setVAlign(vAlign) {
   if (!selectedCell) return;
+  recordEditCommandHistory();
   const el = selectedCell.element;
   el.classList.remove("valign-top", "valign-middle", "valign-bottom");
   el.classList.add(`valign-${vAlign}`);
@@ -2092,6 +2119,7 @@ function saveCellState() {
 function clearCellText() {
   const target = getActiveEditElement();
   if (!target) return;
+  recordEditCommandHistory();
   target.innerHTML = "";
   saveCellState();
   target.focus();
@@ -2291,7 +2319,11 @@ function setupTextboxBehavior(el, tb) {
   });
 
   const content = el.querySelector(".tb-content");
-  content.addEventListener("input", () => { tb.html = content.innerHTML; });
+  content.addEventListener("input", () => {
+    beginHistoryInteraction();
+    tb.html = content.innerHTML;
+    scheduleHistoryInteractionCommit();
+  });
   content.addEventListener("keyup", updateFormatBar);
   content.addEventListener("mouseup", updateFormatBar);
   content.addEventListener("focus", () => {
