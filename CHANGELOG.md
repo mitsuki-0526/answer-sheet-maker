@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.8.0 - 2026-05-18
+
+- Added initial automatic pagination that keeps questions together across multiple sheets.
+- Updated dynamic page numbers and status bar page count.
+- Applied selected paper size and orientation to rendered sheet dimensions.
+- Added print page breaks for multi-page output.
+
 ## v0.7.0 - 2026-05-18
 
 - Added working ribbon tab switching for File, Home, Insert, Paper, Question, View, and Help.
