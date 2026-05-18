@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.9.0 - 2026-05-18
+
+- Added image insertion from local files with Base64 storage.
+- Added URL-based image insertion from the Insert tab.
+- Added image selection, movement, resizing, deletion, Undo/Redo snapshots, and JSON persistence.
+- Rendered inserted images in the printable floating layer.
+
 ## v0.8.0 - 2026-05-18
 
 - Added initial automatic pagination that keeps questions together across multiple sheets.

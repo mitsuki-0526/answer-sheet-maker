@@ -795,17 +795,22 @@ input:focus, select:focus {
   width: 100%; height: 100%;
   pointer-events: none;
 }
-.floating-textbox {
+.floating-textbox,
+.floating-image {
   position: absolute;
   pointer-events: auto;
+}
+.floating-textbox {
   background: rgba(255,255,255,0.85);
   border: 1px dashed #555;
   padding: 2mm 3mm;
   font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
   font-size: 10pt;
+  z-index: 2;
 }
 .floating-textbox.selected,
-.floating-textbox.is-selected {
+.floating-textbox.is-selected,
+.floating-image.selected {
   border-color: var(--accent);
   outline: 1px solid var(--accent-soft);
 }
@@ -837,6 +842,21 @@ input:focus, select:focus {
   z-index: 2;
   pointer-events: auto;
   touch-action: none;
+}
+.floating-image {
+  border: 1px solid transparent;
+  background: transparent;
+  z-index: 1;
+}
+.floating-textbox.selected,
+.floating-image.selected { z-index: 3; }
+.floating-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
 }
 
 /* ===== Status bar ===== */
@@ -1166,7 +1186,7 @@ input:focus, select:focus {
             <span class="lbl two-line">テキスト<br>ボックス</span>
           </button>
           <div class="rb-stack">
-            <button class="rb-small" title="画像を挿入"><span class="ico"><svg><use href="#i-image"/></svg></span><span>画像</span></button>
+            <button class="rb-small" data-action="add-image" title="画像を挿入"><span class="ico"><svg><use href="#i-image"/></svg></span><span>画像</span></button>
             <button class="rb-small" title="図形を挿入"><span class="ico"><svg><use href="#i-shape"/></svg></span><span>図形</span></button>
             <button class="rb-small" title="表を挿入"><span class="ico"><svg><use href="#i-table"/></svg></span><span>表</span></button>
           </div>
@@ -1276,8 +1296,9 @@ input:focus, select:focus {
       <div class="rb-group">
         <div class="rb-group-content">
           <div class="rb-stack">
-            <button class="rb-small" disabled title="v0.9で追加予定"><span class="ico"><svg><use href="#i-image"/></svg></span><span>画像</span></button>
+            <button class="rb-small" data-action="add-image" title="画像を挿入"><span class="ico"><svg><use href="#i-image"/></svg></span><span>画像</span></button>
             <button class="rb-small" disabled title="今後追加予定"><span class="ico"><svg><use href="#i-shape"/></svg></span><span>図形</span></button>
+            <button class="rb-small" data-action="add-image-url" title="URL画像を挿入"><span class="ico"><svg><use href="#i-link"/></svg></span><span>画像URL</span></button>
             <button class="rb-small" data-toggle-target="pageNum" title="ページ番号"><span class="ico"><svg><use href="#i-file"/></svg></span><span>ページ番号</span></button>
           </div>
         </div>
@@ -1608,12 +1629,15 @@ let data = {
       totalScore: 30, subScores: [30], cells: {} }
   ],
   textboxes: [],
+  images: [],
   activeQuestionId: 1
 };
 
 let selectedCell = null;
 let selectedTextbox = null;
+let selectedImage = null;
 let textboxIdCounter = 1;
+let imageIdCounter = 1;
 const PAGE_LAYOUT_DEFAULTS = {
   topMargin: 18,
   bottomMargin: 18
@@ -1657,6 +1681,7 @@ function createDefaultData() {
         totalScore: 30, subScores: [30], cells: {} }
     ],
     textboxes: [],
+    images: [],
     activeQuestionId: 1,
     pageLayout: normalizePageLayout()
   };
@@ -1805,6 +1830,7 @@ function createHistorySnapshot() {
   return {
     data: clonePlain(data),
     textboxIdCounter,
+    imageIdCounter,
     settings: getSettingsSnapshot()
   };
 }
@@ -1872,8 +1898,10 @@ function applySettingsSnapshot(settings) {
 function restoreHistorySnapshot(snapshot) {
   data = clonePlain(snapshot.data);
   textboxIdCounter = snapshot.textboxIdCounter || 1;
+  imageIdCounter = snapshot.imageIdCounter || 1;
   selectedCell = null;
   selectedTextbox = null;
+  selectedImage = null;
   activeHistorySnapshot = null;
   if (historyCommitTimer) {
     clearTimeout(historyCommitTimer);
@@ -2212,6 +2240,7 @@ function renderQuestionBlock(q, qNum, showSubScore, showTotalScore) {
 function render() {
   const savedCell = selectedCell ? { qId: selectedCell.qId, subIdx: selectedCell.subIdx } : null;
   const savedTextboxId = selectedTextbox ? selectedTextbox.id : null;
+  const savedImageId = selectedImage ? selectedImage.id : null;
 
   const container = document.getElementById("sheetContainer");
   if (!container) return;
@@ -2322,8 +2351,12 @@ function render() {
 
   // テキストボックスを再描画
   renderTextboxes();
+  renderImages();
 
   // 選択状態を復元
+  selectedCell = null;
+  selectedTextbox = null;
+  selectedImage = null;
   if (savedCell) {
     const el = container.querySelector(`.ans-cell[data-qid="${savedCell.qId}"][data-sub="${savedCell.subIdx}"]`);
     if (el) {
@@ -2337,6 +2370,14 @@ function render() {
     if (tb) {
       tb.classList.add("selected");
       selectedTextbox = data.textboxes.find(t => t.id === savedTextboxId);
+      updateFormatBar();
+    }
+  }
+  if (savedImageId) {
+    const img = document.querySelector(`.floating-image[data-id="${savedImageId}"]`);
+    if (img) {
+      img.classList.add("selected");
+      selectedImage = (data.images || []).find(image => image.id === savedImageId);
       updateFormatBar();
     }
   }
@@ -2393,7 +2434,9 @@ function doSelectCell(cellOuter) {
     const c = t.querySelector(".tb-content");
     if (c) c.setAttribute("contenteditable", "false");
   });
+  document.querySelectorAll(".floating-image.selected").forEach(img => img.classList.remove("selected"));
   selectedTextbox = null;
+  selectedImage = null;
   const tbSettings = document.getElementById("textboxSettings");
   if (tbSettings) tbSettings.style.display = "none";
 
@@ -2554,6 +2597,13 @@ function deleteSelected() {
     const ts = document.getElementById("textboxSettings");
     if (ts) ts.style.display = "none";
     renderTextboxes();
+    renderImages();
+    updateFormatBar();
+  } else if (selectedImage) {
+    recordHistory();
+    data.images = (data.images || []).filter(img => img.id !== selectedImage.id);
+    selectedImage = null;
+    renderImages();
     updateFormatBar();
   }
 }
@@ -2563,7 +2613,14 @@ function updateFormatBar() {
   const hasSel = selectedCell || selectedTextbox;
   const info = document.getElementById("selectedInfo");
 
-  if (selectedTextbox) {
+  if (selectedImage) {
+    if (info) info.innerHTML = `<span class="dot"></span>選択中: 画像 #${selectedImage.id}`;
+    ["fmtBold", "fmtItalic", "fmtUnderline", "fmtAlignLeft", "fmtAlignCenter", "fmtAlignRight", "fmtAlignJustify", "fmtVAlignTop", "fmtVAlignMiddle", "fmtVAlignBottom"].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.disabled = true;
+    });
+    return;
+  } else if (selectedTextbox) {
     if (info) info.innerHTML = `<span class="dot"></span>選択中: テキストボックス #${selectedTextbox.id}`;
   } else if (selectedCell) {
     const qIdx = data.questions.findIndex(q => q.id === selectedCell.qId) + 1;
@@ -2575,6 +2632,10 @@ function updateFormatBar() {
     setActiveBtn("fmtUnderline", false);
     return;
   }
+  ["fmtBold", "fmtItalic", "fmtUnderline", "fmtAlignLeft", "fmtAlignCenter", "fmtAlignRight", "fmtAlignJustify"].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.disabled = false;
+  });
 
   try {
     setActiveBtn("fmtBold", document.queryCommandState("bold"));
@@ -2631,12 +2692,15 @@ function addTextbox() {
   };
   data.textboxes.push(tb);
   renderTextboxes();
+  renderImages();
   setTimeout(() => {
     const el = document.querySelector(`.floating-textbox[data-id="${tb.id}"]`);
     if (el) {
       document.querySelectorAll(".floating-textbox.selected").forEach(t => t.classList.remove("selected"));
+      document.querySelectorAll(".floating-image.selected").forEach(img => img.classList.remove("selected"));
       document.querySelectorAll(".ans-cell.selected").forEach(c => c.classList.remove("selected"));
       selectedCell = null;
+      selectedImage = null;
       el.classList.add("selected");
       selectedTextbox = tb;
       const ts = document.getElementById("textboxSettings");
@@ -2722,7 +2786,9 @@ function setupTextboxBehavior(el, tb) {
     motionHistorySnapshot = createHistorySnapshot();
 
     document.querySelectorAll(".ans-cell.selected").forEach(c => c.classList.remove("selected"));
+    document.querySelectorAll(".floating-image.selected").forEach(img => img.classList.remove("selected"));
     selectedCell = null;
+    selectedImage = null;
 
     document.querySelectorAll(".floating-textbox.selected").forEach(t => {
       if (t !== el) {
@@ -2769,6 +2835,7 @@ function setupTextboxBehavior(el, tb) {
     beginHistoryInteraction();
     selectedTextbox = tb;
     selectedCell = null;
+    selectedImage = null;
     updateFormatBar();
   });
 
@@ -2791,6 +2858,143 @@ function setupTextboxBehavior(el, tb) {
     }
   });
   content.addEventListener("blur", commitHistoryInteraction);
+
+  document.addEventListener("mouseup", () => {
+    if ((isDragging || isResizing) && motionHistorySnapshot) {
+      if (!snapshotsEqual(motionHistorySnapshot, createHistorySnapshot())) {
+        pushUndoSnapshot(motionHistorySnapshot);
+      }
+      motionHistorySnapshot = null;
+    }
+    isDragging = false;
+    isResizing = false;
+  });
+}
+
+function addImageFromSource(src, srcType = "base64") {
+  recordHistory();
+  if (!data.images) data.images = [];
+  const image = {
+    id: imageIdCounter++,
+    x: 20, y: 72, w: 70, h: 50,
+    src,
+    srcType
+  };
+  data.images.push(image);
+  renderImages();
+  setTimeout(() => {
+    const el = document.querySelector(`.floating-image[data-id="${image.id}"]`);
+    if (el) selectImage(el, image);
+  }, 50);
+}
+
+function addImage() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => addImageFromSource(event.target.result, "base64");
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+
+function addImageUrl() {
+  const url = prompt("画像URLを入力してください");
+  if (!url) return;
+  addImageFromSource(url.trim(), "url");
+}
+
+function renderImages() {
+  const layer = document.getElementById("textboxLayer");
+  if (!layer) return;
+  layer.querySelectorAll(".floating-image").forEach(el => el.remove());
+  (data.images || []).forEach(image => {
+    const el = document.createElement("div");
+    el.className = "floating-image";
+    el.dataset.id = image.id;
+    el.style.left = image.x + "mm";
+    el.style.top = image.y + "mm";
+    el.style.width = image.w + "mm";
+    el.style.height = image.h + "mm";
+    el.innerHTML = `<img src="${escapeHtml(image.src)}" alt=""><div class="resize-handle"></div>`;
+    layer.appendChild(el);
+    setupImageBehavior(el, image);
+  });
+}
+
+function selectImage(el, image) {
+  document.querySelectorAll(".ans-cell.selected").forEach(c => c.classList.remove("selected"));
+  document.querySelectorAll(".floating-textbox.selected").forEach(t => {
+    t.classList.remove("selected", "editing");
+    const c = t.querySelector(".tb-content");
+    if (c) c.setAttribute("contenteditable", "false");
+  });
+  document.querySelectorAll(".floating-image.selected").forEach(img => {
+    if (img !== el) img.classList.remove("selected");
+  });
+  selectedCell = null;
+  selectedTextbox = null;
+  selectedImage = image;
+  const ts = document.getElementById("textboxSettings");
+  if (ts) ts.style.display = "none";
+  el.classList.add("selected");
+  updateFormatBar();
+}
+
+function setupImageBehavior(el, image) {
+  let isDragging = false, isResizing = false;
+  let dragStartX, dragStartY, origX, origY;
+  let resizeStartX, resizeStartY, origW, origH;
+  let motionHistorySnapshot = null;
+
+  function startResize(e) {
+    motionHistorySnapshot = createHistorySnapshot();
+    isResizing = true;
+    resizeStartX = e.clientX; resizeStartY = e.clientY;
+    origW = image.w; origH = image.h;
+    selectImage(el, image);
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  const resizeHandle = el.querySelector(".resize-handle");
+  if (resizeHandle) resizeHandle.addEventListener("mousedown", startResize);
+
+  el.addEventListener("mousedown", (e) => {
+    if (e.target.classList.contains("resize-handle")) {
+      startResize(e);
+      return;
+    }
+    motionHistorySnapshot = createHistorySnapshot();
+    selectImage(el, image);
+    isDragging = true;
+    dragStartX = e.clientX; dragStartY = e.clientY;
+    origX = image.x; origY = image.y;
+    e.preventDefault();
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    const mmRatio = 25.4 / 96;
+    if (isDragging) {
+      const dx = (e.clientX - dragStartX) * mmRatio;
+      const dy = (e.clientY - dragStartY) * mmRatio;
+      image.x = Math.max(0, origX + dx);
+      image.y = Math.max(0, origY + dy);
+      el.style.left = image.x + "mm";
+      el.style.top = image.y + "mm";
+    } else if (isResizing) {
+      const dx = (e.clientX - resizeStartX) * mmRatio;
+      const dy = (e.clientY - resizeStartY) * mmRatio;
+      image.w = Math.max(12, origW + dx);
+      image.h = Math.max(12, origH + dy);
+      el.style.width = image.w + "mm";
+      el.style.height = image.h + "mm";
+    }
+  });
 
   document.addEventListener("mouseup", () => {
     if ((isDragging || isResizing) && motionHistorySnapshot) {
@@ -2838,6 +3042,7 @@ function exportJSON() {
   const dataToSave = {
     ...data,
     textboxIdCounter,
+    imageIdCounter,
     settings: {
       title: document.getElementById("title")?.value || "",
       paperSize: document.getElementById("paperSize")?.value || "A4",
@@ -2872,8 +3077,10 @@ function importJSON() {
       data.title = loaded.title || loaded.settings?.title || data.title;
       data.questions = loaded.questions || data.questions;
       data.textboxes = loaded.textboxes || [];
+      data.images = loaded.images || [];
       data.pageLayout = normalizePageLayout(loaded.pageLayout || loaded.settings?.pageLayout);
-      textboxIdCounter = loaded.textboxIdCounter || (data.textboxes.length + 1);
+      textboxIdCounter = loaded.textboxIdCounter || (Math.max(0, ...data.textboxes.map(t => Number(t.id) || 0)) + 1);
+      imageIdCounter = loaded.imageIdCounter || (Math.max(0, ...data.images.map(img => Number(img.id) || 0)) + 1);
       data.activeQuestionId = loaded.activeQuestionId || (data.questions[0]?.id ?? null);
       if (loaded.settings) {
         syncTitle(loaded.settings.title || data.title, { renderSheet: false });
@@ -2904,8 +3111,10 @@ function newDocument() {
   recordHistory();
   data = createDefaultData();
   textboxIdCounter = 1;
+  imageIdCounter = 1;
   selectedCell = null;
   selectedTextbox = null;
+  selectedImage = null;
   syncTitle(data.title, { renderSheet: false });
   const paperSize = document.getElementById("paperSize");
   if (paperSize) paperSize.value = "A4";
@@ -2973,6 +3182,8 @@ function runRibbonAction(action) {
   if (action === "print") window.print();
   if (action === "add-question") addQuestion();
   if (action === "add-textbox") addTextbox();
+  if (action === "add-image") addImage();
+  if (action === "add-image-url") addImageUrl();
   if (action === "delete-active-question" && data.activeQuestionId) deleteQuestion(data.activeQuestionId);
 }
 
@@ -3089,6 +3300,7 @@ function bindEvents() {
         !e.target.closest(".ribbon-body") &&
         !e.target.closest(".ribbon-tabs") &&
         !e.target.closest(".floating-textbox") &&
+        !e.target.closest(".floating-image") &&
         !e.target.closest(".nav-pane") &&
         !e.target.closest(".titlebar") &&
         !e.target.closest(".status")) {
@@ -3098,8 +3310,10 @@ function bindEvents() {
         const c = t.querySelector(".tb-content");
         if (c) c.setAttribute("contenteditable", "false");
       });
+      document.querySelectorAll(".floating-image.selected").forEach(img => img.classList.remove("selected"));
       selectedCell = null;
       selectedTextbox = null;
+      selectedImage = null;
       const ts = document.getElementById("textboxSettings");
       if (ts) ts.style.display = "none";
       updateFormatBar();
@@ -3123,9 +3337,11 @@ function bindEvents() {
         return;
       }
     }
-    if ((e.key === "Delete" || e.key === "Backspace") && selectedTextbox) {
-      const el = document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"]`);
-      if (el && !el.classList.contains("editing")) {
+    if ((e.key === "Delete" || e.key === "Backspace") && (selectedTextbox || selectedImage)) {
+      const el = selectedTextbox
+        ? document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"]`)
+        : document.querySelector(`.floating-image[data-id="${selectedImage.id}"]`);
+      if (selectedImage || (el && !el.classList.contains("editing"))) {
         deleteSelected();
         e.preventDefault();
       }
