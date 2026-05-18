@@ -604,7 +604,7 @@ input:focus, select:focus {
   display: flex;
   flex-direction: column;
   width: 210mm;
-  min-height: 297mm;
+  height: 297mm;
   background: var(--bg-paper);
   box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.10);
   padding: 18mm 16mm;
@@ -612,6 +612,7 @@ input:focus, select:focus {
   color: #1f1f1f;
   font-size: 10pt;
 }
+.sheet + .sheet { margin-top: 18mm; }
 .sheet-header {
   margin-bottom: 8mm;
 }
@@ -678,6 +679,12 @@ input:focus, select:focus {
 .sheet-body.cols-2 {
   column-count: 2;
   column-gap: 8mm;
+}
+.sheet-body.cols-3 {
+  column-count: 3;
+  column-gap: 8mm;
+}
+.sheet-body.has-divider {
   column-rule: 1px solid var(--line-print);
 }
 .sheet-body-inner { /* legacy */ }
@@ -741,6 +748,44 @@ input:focus, select:focus {
   margin-top: 8mm;
   font-size: 9pt;
   color: #444;
+}
+
+@media print {
+  @page { margin: 0; }
+  body { background: #fff; }
+  .titlebar,
+  .ribbon-tabs,
+  .ribbon-body,
+  .nav-pane,
+  .status,
+  .ruler-h,
+  .ruler-v {
+    display: none !important;
+  }
+  .app-shell,
+  .main,
+  .canvas-wrap,
+  .canvas-inner,
+  .paper-stack,
+  #sheetContainer {
+    display: block;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    background: #fff;
+  }
+  .sheet {
+    box-shadow: none;
+    margin: 0;
+    break-after: page;
+    page-break-after: always;
+  }
+  .sheet:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
 }
 
 /* Floating textbox layer */
@@ -1573,6 +1618,13 @@ const PAGE_LAYOUT_DEFAULTS = {
   topMargin: 18,
   bottomMargin: 18
 };
+const PAPER_SIZE_MM = {
+  A4: { width: 210, height: 297 },
+  B5: { width: 182, height: 257 },
+  B4: { width: 257, height: 364 },
+  A3: { width: 297, height: 420 }
+};
+let renderedPageCount = 1;
 const HISTORY_LIMIT = 50;
 let undoStack = [];
 let redoStack = [];
@@ -1615,6 +1667,64 @@ function getLayoutInfo() {
   if (!sel) return { orientation: "portrait", cols: 2 };
   const v = sel.value.trim();
   return LAYOUT_MAP[v] || { orientation: "portrait", cols: 2 };
+}
+
+function getPaperMetrics(orientation) {
+  const paperSize = document.getElementById("paperSize")?.value || "A4";
+  const base = PAPER_SIZE_MM[paperSize] || PAPER_SIZE_MM.A4;
+  if (orientation === "landscape") {
+    return { width: base.height, height: base.width };
+  }
+  return { width: base.width, height: base.height };
+}
+
+function estimateQuestionHeight(q) {
+  const headerMm = 8;
+  const marginMm = 6;
+  const borderMm = 1;
+  const rows = Math.ceil(q.subCount / Math.max(1, q.cols || 1));
+  const typeMinimum = q.type === "writing" ? 27
+                    : q.type === "drawing" ? 25
+                    : q.type === "proof" ? 51
+                    : 8;
+  const rowHeight = Math.max(Number(q.rowHeight) || 8, typeMinimum);
+  return headerMm + rows * rowHeight + marginMm + borderMm;
+}
+
+function getBodyCapacityMm(paper, pageLayout, showPageNum) {
+  const headerMm = 38;
+  const pageNumberMm = showPageNum ? 14 : 4;
+  const body = paper.height - pageLayout.topMargin - pageLayout.bottomMargin - headerMm - pageNumberMm;
+  return Math.max(40, body);
+}
+
+function paginateQuestions(questions, cols, pageLayout, showPageNum, paper) {
+  const columnCapacity = getBodyCapacityMm(paper, pageLayout, showPageNum);
+  const pages = [];
+  let currentPage = [];
+  let currentColumn = 1;
+  let currentColumnHeight = 0;
+
+  questions.forEach(q => {
+    const qHeight = estimateQuestionHeight(q);
+    const fitsCurrent = currentColumnHeight === 0 || currentColumnHeight + qHeight <= columnCapacity;
+    if (!fitsCurrent) {
+      if (currentColumn < cols) {
+        currentColumn += 1;
+        currentColumnHeight = 0;
+      } else {
+        pages.push(currentPage);
+        currentPage = [];
+        currentColumn = 1;
+        currentColumnHeight = 0;
+      }
+    }
+    currentPage.push(q);
+    currentColumnHeight += qHeight;
+  });
+
+  if (currentPage.length || pages.length === 0) pages.push(currentPage);
+  return pages;
 }
 
 /* ========= トグル（v0.4 UIでは .is-on クラスを使う） ========= */
@@ -2043,6 +2153,61 @@ function deleteQuestion(id) {
   render();
 }
 
+function renderQuestionBlock(q, qNum, showSubScore, showTotalScore) {
+  let html = `<div class="q-block">`;
+  if (showTotalScore) {
+    html += `<div class="q-header" style="display:flex;justify-content:space-between;align-items:center"><span>${qNum}</span><span style="font-size:9pt;color:var(--text-secondary)">/ ${q.totalScore}点</span></div>`;
+  } else {
+    html += `<div class="q-header">${qNum}</div>`;
+  }
+
+  if (q.cols === 1) {
+    for (let i = 0; i < q.subCount; i++) {
+      const cellData = q.cells[i] || {};
+      const ansClass = q.type === "writing" ? "writing"
+                     : q.type === "drawing" ? "drawing"
+                     : q.type === "proof" ? "proof" : "";
+      const heightStyle = q.type === "value" ? "" : `min-height:${q.rowHeight}mm;`;
+      const vAlignClass = cellData.vAlign ? `valign-${cellData.vAlign}` : "valign-top";
+      const innerHtml = cellData.html || "";
+      const scoreCell = showSubScore
+        ? `<div class="sub-score">${q.subScores[i] || 0}</div>`
+        : "";
+
+      html += `<div class="q-row${showSubScore ? ' with-score' : ''}">
+        <div class="sub-num">(${i+1})</div>
+        <div class="ans-cell ${ansClass} ${vAlignClass}" data-qid="${q.id}" data-sub="${i}" style="${heightStyle}">
+          <div class="cell-inner" contenteditable="true">${innerHtml}</div>
+        </div>
+        ${scoreCell}
+      </div>`;
+    }
+  } else {
+    const rows = Math.ceil(q.subCount / q.cols);
+    for (let r = 0; r < rows; r++) {
+      html += `<div class="q-row-inline cols-${q.cols}">`;
+      for (let c = 0; c < q.cols; c++) {
+        const subIdx = r * q.cols + c;
+        if (subIdx >= q.subCount) break;
+        const cellData = q.cells[subIdx] || {};
+        const vAlignClass = cellData.vAlign ? `valign-${cellData.vAlign}` : "valign-middle";
+        const innerHtml = cellData.html || "";
+        html += `<div class="sub-num">(${subIdx+1})</div>
+          <div class="ans-cell ${vAlignClass}" data-qid="${q.id}" data-sub="${subIdx}" style="min-height:${q.rowHeight}mm;">
+            <div class="cell-inner" contenteditable="true">${innerHtml}</div>
+          </div>`;
+        if (showSubScore) {
+          html += `<div class="sub-score">${q.subScores[subIdx] || 0}</div>`;
+        }
+      }
+      html += `</div>`;
+    }
+  }
+
+  html += `</div>`;
+  return html;
+}
+
 /* ========= シート描画 ========= */
 function render() {
   const savedCell = selectedCell ? { qId: selectedCell.qId, subIdx: selectedCell.subIdx } : null;
@@ -2062,108 +2227,70 @@ function render() {
   const title = titleInput ? titleInput.value : (data.title || "解答用紙");
   syncTitle(title, { renderSheet: false });
 
-  // 用紙の組み立て
-  const sheet = document.createElement("div");
-  sheet.className = "sheet" + (orientation === "landscape" ? " landscape" : "");
-  sheet.style.paddingTop = `${pageLayout.topMargin}mm`;
-  sheet.style.paddingBottom = `${pageLayout.bottomMargin}mm`;
+  const paper = getPaperMetrics(orientation);
+  const pages = paginateQuestions(data.questions, cols, pageLayout, showPageNum, paper);
+  renderedPageCount = pages.length;
+  container.innerHTML = "";
+  const questionNumbers = new Map(data.questions.map((q, idx) => [q.id, idx + 1]));
 
-  let html = `
-    <div class="sheet-header">
-      <h1 class="title" contenteditable="true" spellcheck="false" aria-label="解答用紙タイトル">${escapeHtml(title)}</h1>
-      <table class="hdr-table">
-        <tr>
-          <th>年</th><td></td>
-          <th>組</th><td></td>
-          <th>番号</th><td></td>
-          <th>氏名</th><td class="name"></td>
-        </tr>
-      </table>
-      <hr class="divider">
-    </div>
-    <div class="sheet-body cols-${cols}${centerLine && cols > 1 ? ' has-divider' : ''}">
-  `;
+  pages.forEach((pageQuestions, pageIndex) => {
+    const sheet = document.createElement("div");
+    sheet.className = "sheet" + (orientation === "landscape" ? " landscape" : "");
+    sheet.style.width = `${paper.width}mm`;
+    sheet.style.height = `${paper.height}mm`;
+    sheet.style.paddingTop = `${pageLayout.topMargin}mm`;
+    sheet.style.paddingBottom = `${pageLayout.bottomMargin}mm`;
 
-  data.questions.forEach((q, idx) => {
-    const qNum = idx + 1;
-    html += `<div class="q-block">`;
-    if (showTotalScore) {
-      html += `<div class="q-header" style="display:flex;justify-content:space-between;align-items:center"><span>${qNum}</span><span style="font-size:9pt;color:var(--text-secondary)">/ ${q.totalScore}点</span></div>`;
-    } else {
-      html += `<div class="q-header">${qNum}</div>`;
-    }
+    let html = `
+      <div class="sheet-header">
+        <h1 class="title" contenteditable="true" spellcheck="false" aria-label="解答用紙タイトル">${escapeHtml(title)}</h1>
+        <table class="hdr-table">
+          <tr>
+            <th>年</th><td></td>
+            <th>組</th><td></td>
+            <th>番号</th><td></td>
+            <th>氏名</th><td class="name"></td>
+          </tr>
+        </table>
+        <hr class="divider">
+      </div>
+      <div class="sheet-body cols-${cols}${centerLine && cols > 1 ? ' has-divider' : ''}">
+    `;
 
-    if (q.cols === 1) {
-      for (let i = 0; i < q.subCount; i++) {
-        const cellData = q.cells[i] || {};
-        const ansClass = q.type === "writing" ? "writing"
-                       : q.type === "drawing" ? "drawing"
-                       : q.type === "proof" ? "proof" : "";
-        const heightStyle = q.type === "value" ? "" : `min-height:${q.rowHeight}mm;`;
-        const vAlignClass = cellData.vAlign ? `valign-${cellData.vAlign}` : "valign-top";
-        const innerHtml = cellData.html || "";
-        const scoreCell = showSubScore
-          ? `<div class="sub-score">${q.subScores[i] || 0}</div>`
-          : "";
+    pageQuestions.forEach(q => {
+      html += renderQuestionBlock(q, questionNumbers.get(q.id), showSubScore, showTotalScore);
+    });
 
-        html += `<div class="q-row${showSubScore ? ' with-score' : ''}">
-          <div class="sub-num">(${i+1})</div>
-          <div class="ans-cell ${ansClass} ${vAlignClass}" data-qid="${q.id}" data-sub="${i}" style="${heightStyle}">
-            <div class="cell-inner" contenteditable="true">${innerHtml}</div>
-          </div>
-          ${scoreCell}
-        </div>`;
-      }
-    } else {
-      const rows = Math.ceil(q.subCount / q.cols);
-      for (let r = 0; r < rows; r++) {
-        html += `<div class="q-row-inline cols-${q.cols}">`;
-        for (let c = 0; c < q.cols; c++) {
-          const subIdx = r * q.cols + c;
-          if (subIdx >= q.subCount) break;
-          const cellData = q.cells[subIdx] || {};
-          const vAlignClass = cellData.vAlign ? `valign-${cellData.vAlign}` : "valign-middle";
-          const innerHtml = cellData.html || "";
-          html += `<div class="sub-num">(${subIdx+1})</div>
-            <div class="ans-cell ${vAlignClass}" data-qid="${q.id}" data-sub="${subIdx}" style="min-height:${q.rowHeight}mm;">
-              <div class="cell-inner" contenteditable="true">${innerHtml}</div>
-            </div>`;
-          if (showSubScore) {
-            html += `<div class="sub-score">${q.subScores[subIdx] || 0}</div>`;
-          }
-        }
-        html += `</div>`;
-      }
-    }
     html += `</div>`;
+    if (showPageNum) {
+      html += `<div class="page-num">${pageIndex + 1} / ${pages.length}</div>`;
+    }
+    if (pageIndex === 0) {
+      html += `<div class="textbox-layer" id="textboxLayer"></div>`;
+    }
+
+    sheet.innerHTML = html;
+    container.appendChild(sheet);
   });
 
-  html += `</div>`;
-
-  if (showPageNum) {
-    html += `<div class="page-num">1 / 1</div>`;
-  }
-
-  html += `<div class="textbox-layer" id="textboxLayer"></div>`;
-
-  sheet.innerHTML = html;
-  container.innerHTML = "";
-  container.appendChild(sheet);
-
   // セル選択ハンドラを登録
-  const titleEl = sheet.querySelector(".sheet-header .title");
-  if (titleEl) {
+  container.querySelectorAll(".sheet-header .title").forEach(titleEl => {
     titleEl.addEventListener("focus", () => {
       beginHistoryInteraction();
       titleEl.classList.add("is-active");
     });
     titleEl.addEventListener("input", () => {
       syncTitle(titleEl.textContent, { renderSheet: false });
+      container.querySelectorAll(".sheet-header .title").forEach(other => {
+        if (other !== titleEl) other.textContent = titleEl.textContent;
+      });
     });
     titleEl.addEventListener("blur", () => {
       titleEl.classList.remove("is-active");
       const normalizedTitle = normalizeTitle(titleEl.textContent);
-      titleEl.textContent = normalizedTitle;
+      container.querySelectorAll(".sheet-header .title").forEach(other => {
+        other.textContent = normalizedTitle;
+      });
       syncTitle(normalizedTitle, { renderSheet: false });
       commitHistoryInteraction();
     });
@@ -2174,10 +2301,10 @@ function render() {
       }
       e.stopPropagation();
     });
-  }
+  });
 
   // セル選択ハンドラを登録
-  sheet.querySelectorAll(".ans-cell").forEach(cell => {
+  container.querySelectorAll(".ans-cell").forEach(cell => {
     cell.addEventListener("mousedown", (e) => {
       if (!e.target.classList.contains("cell-inner")) {
         doSelectCell(cell);
@@ -2198,7 +2325,7 @@ function render() {
 
   // 選択状態を復元
   if (savedCell) {
-    const el = sheet.querySelector(`.ans-cell[data-qid="${savedCell.qId}"][data-sub="${savedCell.subIdx}"]`);
+    const el = container.querySelector(`.ans-cell[data-qid="${savedCell.qId}"][data-sub="${savedCell.subIdx}"]`);
     if (el) {
       el.classList.add("selected");
       selectedCell = { qId: savedCell.qId, subIdx: savedCell.subIdx, element: el };
@@ -2251,7 +2378,7 @@ function updateStatusBar() {
 
   const groups = status.querySelectorAll(":scope > .group");
   if (groups.length >= 4) {
-    groups[0].textContent = `ページ 1 / 1`;
+    groups[0].textContent = `ページ 1 / ${renderedPageCount}`;
     groups[1].textContent = `大問: ${data.questions.length}`;
     groups[2].textContent = `合計: ${total} 点`;
     groups[3].textContent = `${paperSize} ${orientLabel} ${cols}段`;
