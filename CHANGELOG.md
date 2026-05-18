@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.7.0 - 2026-05-18
+
+- Added working ribbon tab switching for File, Home, Insert, Paper, Question, View, and Help.
+- Added File tab commands for new document, JSON open/save, and print/PDF output.
+- Added Insert tab commands for answer-area insertion, textbox insertion, and page number toggling.
+- Added Paper tab shortcuts for paper size, layout, margins, center line, page number, and score display settings.
+
 ## Documentation - 2026-05-18
 
 - Set v0.12 as the initial achievement target.
