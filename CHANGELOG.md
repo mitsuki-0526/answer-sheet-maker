@@ -13,6 +13,7 @@
 - Added phase B history capture for cell text input, textbox text input, formatting commands, alignment, vertical alignment, and cell clearing.
 - Fixed textbox edit focus showing a duplicate inner border and made textbox move/resize history capture independent from text editing history.
 - Improved the textbox resize handle hit area and event handling so resizing starts reliably.
+- Fixed textbox background color options so transparent, white, and gray render distinctly.
 
 ## v0.5.0 - 2026-05-18
 
