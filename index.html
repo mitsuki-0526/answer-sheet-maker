@@ -602,6 +602,17 @@ input:focus, select:focus {
   margin: 0 0 6mm;
   letter-spacing: 0.04em;
 }
+.sheet-header .title[contenteditable="true"] {
+  cursor: text;
+  border-radius: 2mm;
+  outline: 1px solid transparent;
+  outline-offset: 1mm;
+}
+.sheet-header .title[contenteditable="true"]:hover,
+.sheet-header .title[contenteditable="true"]:focus {
+  background: var(--accent-soft);
+  outline-color: var(--accent);
+}
 .hdr-table {
   border-collapse: collapse;
   width: 100%;
@@ -1614,7 +1625,8 @@ function render() {
   const showTotalScore = isToggleOn("showTotalScore");
 
   const titleInput = document.getElementById("title");
-  const title = titleInput ? titleInput.value : "解答用紙";
+  const title = titleInput ? titleInput.value : (data.title || "解答用紙");
+  syncTitle(title, { renderSheet: false });
 
   // 用紙の組み立て
   const sheet = document.createElement("div");
@@ -1622,7 +1634,7 @@ function render() {
 
   let html = `
     <div class="sheet-header">
-      <h1 class="title">${escapeHtml(title)}</h1>
+      <h1 class="title" contenteditable="true" spellcheck="false" aria-label="解答用紙タイトル">${escapeHtml(title)}</h1>
       <table class="hdr-table">
         <tr>
           <th>年</th><td></td>
@@ -1703,6 +1715,30 @@ function render() {
   container.appendChild(sheet);
 
   // セル選択ハンドラを登録
+  const titleEl = sheet.querySelector(".sheet-header .title");
+  if (titleEl) {
+    titleEl.addEventListener("focus", () => {
+      titleEl.classList.add("is-active");
+    });
+    titleEl.addEventListener("input", () => {
+      syncTitle(titleEl.textContent, { renderSheet: false });
+    });
+    titleEl.addEventListener("blur", () => {
+      titleEl.classList.remove("is-active");
+      const normalizedTitle = normalizeTitle(titleEl.textContent);
+      titleEl.textContent = normalizedTitle;
+      syncTitle(normalizedTitle, { renderSheet: false });
+    });
+    titleEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        titleEl.blur();
+      }
+      e.stopPropagation();
+    });
+  }
+
+  // セル選択ハンドラを登録
   sheet.querySelectorAll(".ans-cell").forEach(cell => {
     cell.addEventListener("mousedown", (e) => {
       if (!e.target.classList.contains("cell-inner")) {
@@ -1746,6 +1782,21 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
   })[c]);
+}
+
+function normalizeTitle(value) {
+  const title = String(value || "").replace(/\s+/g, " ").trim();
+  return title || "解答用紙";
+}
+
+function syncTitle(value, options = {}) {
+  const title = normalizeTitle(value);
+  data.title = title;
+  const titleInput = document.getElementById("title");
+  if (titleInput && titleInput.value !== title) titleInput.value = title;
+  const docName = document.getElementById("docName");
+  if (docName && docName.textContent !== title) docName.textContent = title;
+  if (options.renderSheet) render();
 }
 
 /* ========= ステータスバー更新 ========= */
@@ -2192,13 +2243,13 @@ function importJSON() {
     const reader = new FileReader();
     reader.onload = (e) => {
       const loaded = JSON.parse(e.target.result);
+      data.title = loaded.title || loaded.settings?.title || data.title;
       data.questions = loaded.questions || data.questions;
       data.textboxes = loaded.textboxes || [];
       textboxIdCounter = loaded.textboxIdCounter || (data.textboxes.length + 1);
       data.activeQuestionId = loaded.activeQuestionId || (data.questions[0]?.id ?? null);
       if (loaded.settings) {
-        const titleEl = document.getElementById("title");
-        if (titleEl) titleEl.value = loaded.settings.title || "";
+        syncTitle(loaded.settings.title || data.title, { renderSheet: false });
         const ps = document.getElementById("paperSize");
         if (ps) ps.value = loaded.settings.paperSize || "A4";
         const lo = document.getElementById("layout");
@@ -2209,6 +2260,8 @@ function importJSON() {
           if (loaded.settings[key]) sw.classList.add("is-on");
           else sw.classList.remove("is-on");
         });
+      } else {
+        syncTitle(data.title, { renderSheet: false });
       }
       renderQuestionList();
       render();
@@ -2330,6 +2383,7 @@ function bindEvents() {
 
 /* ========= 初期化 ========= */
 document.addEventListener("DOMContentLoaded", () => {
+  syncTitle(data.title, { renderSheet: false });
   bindEvents();
   renderQuestionList();
   render();
