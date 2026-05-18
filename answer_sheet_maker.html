@@ -1409,7 +1409,7 @@ let selectedCell = null;
 let selectedTextbox = null;
 let textboxIdCounter = 1;
 const PAGE_LAYOUT_DEFAULTS = {
-  headerHeight: 38,
+  topMargin: 18,
   bottomMargin: 18
 };
 const HISTORY_LIMIT = 50;
@@ -1451,7 +1451,7 @@ function clampNumber(value, min, max, fallback) {
 
 function normalizePageLayout(settings = {}) {
   return {
-    headerHeight: clampNumber(settings.headerHeight, 24, 70, PAGE_LAYOUT_DEFAULTS.headerHeight),
+    topMargin: clampNumber(settings.topMargin ?? settings.headerHeight, 6, 70, PAGE_LAYOUT_DEFAULTS.topMargin),
     bottomMargin: clampNumber(settings.bottomMargin, 8, 40, PAGE_LAYOUT_DEFAULTS.bottomMargin)
   };
 }
@@ -1463,19 +1463,19 @@ function ensurePageLayout() {
 
 function getPageLayoutSettings() {
   const current = ensurePageLayout();
-  const headerHeight = document.getElementById("headerHeight");
+  const topMargin = document.getElementById("topMargin");
   const bottomMargin = document.getElementById("bottomMargin");
   return normalizePageLayout({
-    headerHeight: headerHeight ? headerHeight.value : current.headerHeight,
+    topMargin: topMargin ? topMargin.value : current.topMargin,
     bottomMargin: bottomMargin ? bottomMargin.value : current.bottomMargin
   });
 }
 
 function syncPageLayoutInputs() {
   const settings = ensurePageLayout();
-  const headerHeight = document.getElementById("headerHeight");
+  const topMargin = document.getElementById("topMargin");
   const bottomMargin = document.getElementById("bottomMargin");
-  if (headerHeight) headerHeight.value = settings.headerHeight;
+  if (topMargin) topMargin.value = settings.topMargin;
   if (bottomMargin) bottomMargin.value = settings.bottomMargin;
 }
 
@@ -1772,11 +1772,11 @@ function renderQuestionList() {
   const settingsPanel = document.createElement("div");
   settingsPanel.className = "page-layout-settings";
   settingsPanel.innerHTML = `
-    <div class="settings-title">ヘッダー・余白</div>
+    <div class="settings-title">上下余白</div>
     <div class="field-row">
       <div class="field">
-        <label>ヘッダー高さ(mm)</label>
-        <input id="headerHeight" type="number" min="24" max="70" value="${pageLayout.headerHeight}">
+        <label>上余白(mm)</label>
+        <input id="topMargin" type="number" min="6" max="70" value="${pageLayout.topMargin}">
       </div>
       <div class="field">
         <label>下余白(mm)</label>
@@ -1881,10 +1881,11 @@ function render() {
   // 用紙の組み立て
   const sheet = document.createElement("div");
   sheet.className = "sheet" + (orientation === "landscape" ? " landscape" : "");
+  sheet.style.paddingTop = `${pageLayout.topMargin}mm`;
   sheet.style.paddingBottom = `${pageLayout.bottomMargin}mm`;
 
   let html = `
-    <div class="sheet-header" style="min-height:${pageLayout.headerHeight}mm;">
+    <div class="sheet-header">
       <h1 class="title" contenteditable="true" spellcheck="false" aria-label="解答用紙タイトル">${escapeHtml(title)}</h1>
       <table class="hdr-table">
         <tr>
