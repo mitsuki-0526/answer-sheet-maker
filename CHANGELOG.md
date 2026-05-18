@@ -1,10 +1,16 @@
 # Changelog
 
+## Documentation - 2026-05-18
+
+- Set v0.12 as the initial achievement target.
+- Moved vertical writing, mobile support, and Firebase sharing to future updates.
+
 ## v0.6.0 - 2026-05-18
 
 - Added phase A Undo/Redo history using in-memory snapshots.
 - Enabled Undo/Redo buttons and Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z shortcuts for non-text editing operations.
 - Covered title changes, paper settings, question add/delete/settings, JSON import, and basic textbox operations.
+- Added phase B history capture for cell text input, textbox text input, formatting commands, alignment, vertical alignment, and cell clearing.
 
 ## v0.5.0 - 2026-05-18
 
