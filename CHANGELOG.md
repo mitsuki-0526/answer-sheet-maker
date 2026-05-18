@@ -11,6 +11,7 @@
 - Enabled Undo/Redo buttons and Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z shortcuts for non-text editing operations.
 - Covered title changes, paper settings, question add/delete/settings, JSON import, and basic textbox operations.
 - Added phase B history capture for cell text input, textbox text input, formatting commands, alignment, vertical alignment, and cell clearing.
+- Fixed textbox edit focus showing a duplicate inner border and made textbox move/resize history capture independent from text editing history.
 
 ## v0.5.0 - 2026-05-18
 
