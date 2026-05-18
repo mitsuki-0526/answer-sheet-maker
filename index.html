@@ -732,6 +732,9 @@ input:focus, select:focus {
 }
 .floating-textbox.border-style-solid { border-style: solid; }
 .tb-content { width: 100%; min-height: 1em; }
+.tb-content[contenteditable="true"] {
+  outline: none;
+}
 .resize-handle {
   position: absolute;
   right: -4px; bottom: -4px;
@@ -2268,10 +2271,11 @@ function setupTextboxBehavior(el, tb) {
   let isDragging = false, isResizing = false;
   let dragStartX, dragStartY, origX, origY;
   let resizeStartX, resizeStartY, origW, origH;
+  let motionHistorySnapshot = null;
 
   el.addEventListener("mousedown", (e) => {
     if (e.target.classList.contains("resize-handle")) {
-      beginHistoryInteraction();
+      motionHistorySnapshot = createHistorySnapshot();
       isResizing = true;
       resizeStartX = e.clientX; resizeStartY = e.clientY;
       origW = tb.w; origH = tb.h;
@@ -2280,7 +2284,7 @@ function setupTextboxBehavior(el, tb) {
       return;
     }
     if (el.classList.contains("editing")) return;
-    beginHistoryInteraction();
+    motionHistorySnapshot = createHistorySnapshot();
 
     document.querySelectorAll(".ans-cell.selected").forEach(c => c.classList.remove("selected"));
     selectedCell = null;
@@ -2354,7 +2358,12 @@ function setupTextboxBehavior(el, tb) {
   content.addEventListener("blur", commitHistoryInteraction);
 
   document.addEventListener("mouseup", () => {
-    if (isDragging || isResizing) commitHistoryInteraction();
+    if ((isDragging || isResizing) && motionHistorySnapshot) {
+      if (!snapshotsEqual(motionHistorySnapshot, createHistorySnapshot())) {
+        pushUndoSnapshot(motionHistorySnapshot);
+      }
+      motionHistorySnapshot = null;
+    }
     isDragging = false;
     isResizing = false;
   });
