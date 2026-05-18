@@ -732,6 +732,9 @@ input:focus, select:focus {
   outline: 1px solid var(--accent-soft);
 }
 .floating-textbox.border-style-solid { border-style: solid; }
+.floating-textbox.bg-transparent { background: transparent; }
+.floating-textbox.bg-white { background: var(--bg-paper); }
+.floating-textbox.bg-gray { background: var(--bg-titlebar); }
 .tb-content { width: 100%; min-height: 1em; }
 .tb-content[contenteditable="true"] {
   outline: none;
@@ -2257,6 +2260,7 @@ function renderTextboxes() {
   data.textboxes.forEach(tb => {
     if (!tb.borderStyle) tb.borderStyle = "solid";
     if (!tb.borderWidth) tb.borderWidth = "0.5pt";
+    if (!tb.bg) tb.bg = "transparent";
 
     const el = document.createElement("div");
     el.className = `floating-textbox border-style-${tb.borderStyle} bg-${tb.bg}`;
