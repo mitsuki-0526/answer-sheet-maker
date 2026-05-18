@@ -600,6 +600,22 @@ input:focus, select:focus {
 .sheet-header {
   margin-bottom: 8mm;
 }
+.page-layout-settings {
+  margin-top: 14px;
+  padding: 10px;
+  border: 1px solid var(--line-mid);
+  border-radius: 3px;
+  background: var(--bg-paper);
+}
+.page-layout-settings .settings-title {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.page-layout-settings .field-row {
+  margin-bottom: 0;
+}
 .sheet-header .title {
   font-size: 18pt;
   font-weight: 700;
@@ -1392,6 +1408,10 @@ let data = {
 let selectedCell = null;
 let selectedTextbox = null;
 let textboxIdCounter = 1;
+const PAGE_LAYOUT_DEFAULTS = {
+  headerHeight: 38,
+  bottomMargin: 18
+};
 const HISTORY_LIMIT = 50;
 let undoStack = [];
 let redoStack = [];
@@ -1423,6 +1443,42 @@ function isToggleOn(id) {
   return el ? el.classList.contains("is-on") : false;
 }
 
+function clampNumber(value, min, max, fallback) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.min(max, Math.max(min, num));
+}
+
+function normalizePageLayout(settings = {}) {
+  return {
+    headerHeight: clampNumber(settings.headerHeight, 24, 70, PAGE_LAYOUT_DEFAULTS.headerHeight),
+    bottomMargin: clampNumber(settings.bottomMargin, 8, 40, PAGE_LAYOUT_DEFAULTS.bottomMargin)
+  };
+}
+
+function ensurePageLayout() {
+  data.pageLayout = normalizePageLayout(data.pageLayout);
+  return data.pageLayout;
+}
+
+function getPageLayoutSettings() {
+  const current = ensurePageLayout();
+  const headerHeight = document.getElementById("headerHeight");
+  const bottomMargin = document.getElementById("bottomMargin");
+  return normalizePageLayout({
+    headerHeight: headerHeight ? headerHeight.value : current.headerHeight,
+    bottomMargin: bottomMargin ? bottomMargin.value : current.bottomMargin
+  });
+}
+
+function syncPageLayoutInputs() {
+  const settings = ensurePageLayout();
+  const headerHeight = document.getElementById("headerHeight");
+  const bottomMargin = document.getElementById("bottomMargin");
+  if (headerHeight) headerHeight.value = settings.headerHeight;
+  if (bottomMargin) bottomMargin.value = settings.bottomMargin;
+}
+
 function setupToggle(id) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -1443,6 +1499,7 @@ function getSettingsSnapshot() {
     title: document.getElementById("title")?.value || data.title || "解答用紙",
     paperSize: document.getElementById("paperSize")?.value || "A4",
     layout: document.getElementById("layout")?.value || "縦置き 2段",
+    pageLayout: getPageLayoutSettings(),
     centerLine: isToggleOn("centerLine"),
     pageNum: isToggleOn("pageNum"),
     showSubScore: isToggleOn("showSubScore"),
@@ -1508,6 +1565,8 @@ function applySettingsSnapshot(settings) {
   if (paperSize) paperSize.value = settings.paperSize || "A4";
   const layout = document.getElementById("layout");
   if (layout) layout.value = settings.layout || "縦置き 2段";
+  data.pageLayout = normalizePageLayout(settings.pageLayout || settings);
+  syncPageLayoutInputs();
   ["centerLine","pageNum","showSubScore","showTotalScore"].forEach(key => {
     const sw = document.getElementById(key);
     if (!sw) return;
@@ -1709,6 +1768,33 @@ function renderQuestionList() {
   addBtn.addEventListener("click", addQuestion);
   container.appendChild(addBtn);
 
+  const pageLayout = ensurePageLayout();
+  const settingsPanel = document.createElement("div");
+  settingsPanel.className = "page-layout-settings";
+  settingsPanel.innerHTML = `
+    <div class="settings-title">ヘッダー・余白</div>
+    <div class="field-row">
+      <div class="field">
+        <label>ヘッダー高さ(mm)</label>
+        <input id="headerHeight" type="number" min="24" max="70" value="${pageLayout.headerHeight}">
+      </div>
+      <div class="field">
+        <label>下余白(mm)</label>
+        <input id="bottomMargin" type="number" min="8" max="40" value="${pageLayout.bottomMargin}">
+      </div>
+    </div>
+  `;
+  settingsPanel.querySelectorAll("input").forEach(input => {
+    input.addEventListener("focus", beginHistoryInteraction);
+    input.addEventListener("change", () => {
+      data.pageLayout = getPageLayoutSettings();
+      render();
+      commitHistoryInteraction();
+    });
+    input.addEventListener("blur", commitHistoryInteraction);
+  });
+  container.appendChild(settingsPanel);
+
   // テキストボックス設定パネルを末尾に再追加
   if (tbSettings) container.appendChild(tbSettings);
 
@@ -1786,6 +1872,7 @@ function render() {
   const showPageNum = isToggleOn("pageNum");
   const showSubScore = isToggleOn("showSubScore");
   const showTotalScore = isToggleOn("showTotalScore");
+  const pageLayout = ensurePageLayout();
 
   const titleInput = document.getElementById("title");
   const title = titleInput ? titleInput.value : (data.title || "解答用紙");
@@ -1794,9 +1881,10 @@ function render() {
   // 用紙の組み立て
   const sheet = document.createElement("div");
   sheet.className = "sheet" + (orientation === "landscape" ? " landscape" : "");
+  sheet.style.paddingBottom = `${pageLayout.bottomMargin}mm`;
 
   let html = `
-    <div class="sheet-header">
+    <div class="sheet-header" style="min-height:${pageLayout.headerHeight}mm;">
       <h1 class="title" contenteditable="true" spellcheck="false" aria-label="解答用紙タイトル">${escapeHtml(title)}</h1>
       <table class="hdr-table">
         <tr>
@@ -2431,6 +2519,7 @@ function exportJSON() {
       title: document.getElementById("title")?.value || "",
       paperSize: document.getElementById("paperSize")?.value || "A4",
       layout: document.getElementById("layout")?.value || "縦置き 2段",
+      pageLayout: getPageLayoutSettings(),
       centerLine: isToggleOn("centerLine"),
       pageNum: isToggleOn("pageNum"),
       showSubScore: isToggleOn("showSubScore"),
@@ -2460,10 +2549,12 @@ function importJSON() {
       data.title = loaded.title || loaded.settings?.title || data.title;
       data.questions = loaded.questions || data.questions;
       data.textboxes = loaded.textboxes || [];
+      data.pageLayout = normalizePageLayout(loaded.pageLayout || loaded.settings?.pageLayout);
       textboxIdCounter = loaded.textboxIdCounter || (data.textboxes.length + 1);
       data.activeQuestionId = loaded.activeQuestionId || (data.questions[0]?.id ?? null);
       if (loaded.settings) {
         syncTitle(loaded.settings.title || data.title, { renderSheet: false });
+        data.pageLayout = normalizePageLayout(loaded.settings.pageLayout || data.pageLayout);
         const ps = document.getElementById("paperSize");
         if (ps) ps.value = loaded.settings.paperSize || "A4";
         const lo = document.getElementById("layout");
