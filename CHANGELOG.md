@@ -7,6 +7,7 @@
 
 ## v0.6.0 - 2026-05-18
 
+- Added vertical alignment support for text inside floating textboxes.
 - Added top and bottom margin controls with JSON persistence and Undo/Redo support.
 - Extended the sheet body to fill the remaining page height so column dividers reach the bottom margin.
 - Added phase A Undo/Redo history using in-memory snapshots.

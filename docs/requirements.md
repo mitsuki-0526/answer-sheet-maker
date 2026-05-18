@@ -120,7 +120,8 @@ let data = {
   borderStyle: "solid",     // solid/dashed/dotted/double/none
   borderWidth: "0.5pt",     // 0.5pt/1pt/1.5pt/2pt/3pt
   bg: "transparent",        // transparent/white/gray
-  align: "left"             // left/center/right/justify
+  align: "left",            // left/center/right/justify
+  vAlign: "top"             // top/middle/bottom
 }
 ```
 
@@ -328,6 +329,7 @@ font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
 - [ ] 枠線太さ（0.5pt〜3pt）
 - [ ] 背景色（透明/白/グレー）
 - [ ] 内部テキストの書式変更（ツールバーから操作）
+- [ ] 内部テキストの上下位置揃え
 
 ### 5.8 入出力
 - [ ] JSON保存（タイトルがファイル名）

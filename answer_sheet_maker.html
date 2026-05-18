@@ -755,7 +755,16 @@ input:focus, select:focus {
 .floating-textbox.bg-transparent { background: transparent; }
 .floating-textbox.bg-white { background: var(--bg-paper); }
 .floating-textbox.bg-gray { background: var(--bg-titlebar); }
-.tb-content { width: 100%; min-height: 1em; }
+.tb-content {
+  width: 100%;
+  height: 100%;
+  min-height: 1em;
+  display: flex;
+  flex-direction: column;
+}
+.tb-content.valign-top { justify-content: flex-start; }
+.tb-content.valign-middle { justify-content: center; }
+.tb-content.valign-bottom { justify-content: flex-end; }
 .tb-content[contenteditable="true"] {
   outline: none;
 }
@@ -2197,14 +2206,23 @@ function setAlign(align) {
 }
 
 function setVAlign(vAlign) {
-  if (!selectedCell) return;
+  if (!selectedCell && !selectedTextbox) return;
   recordEditCommandHistory();
-  const el = selectedCell.element;
-  el.classList.remove("valign-top", "valign-middle", "valign-bottom");
-  el.classList.add(`valign-${vAlign}`);
-  const q = data.questions.find(q => q.id === selectedCell.qId);
-  if (!q.cells[selectedCell.subIdx]) q.cells[selectedCell.subIdx] = {};
-  q.cells[selectedCell.subIdx].vAlign = vAlign;
+  if (selectedCell) {
+    const el = selectedCell.element;
+    el.classList.remove("valign-top", "valign-middle", "valign-bottom");
+    el.classList.add(`valign-${vAlign}`);
+    const q = data.questions.find(q => q.id === selectedCell.qId);
+    if (!q.cells[selectedCell.subIdx]) q.cells[selectedCell.subIdx] = {};
+    q.cells[selectedCell.subIdx].vAlign = vAlign;
+  } else if (selectedTextbox) {
+    selectedTextbox.vAlign = vAlign;
+    const content = document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"] .tb-content`);
+    if (content) {
+      content.classList.remove("valign-top", "valign-middle", "valign-bottom");
+      content.classList.add(`valign-${vAlign}`);
+    }
+  }
   updateFormatBar();
 }
 
@@ -2283,15 +2301,16 @@ function updateFormatBar() {
   if (selectedCell) {
     if (selectedCell.element.classList.contains("valign-middle")) vAlign = "middle";
     else if (selectedCell.element.classList.contains("valign-bottom")) vAlign = "bottom";
+  } else if (selectedTextbox) {
+    vAlign = selectedTextbox.vAlign || "top";
   }
   setActiveBtn("fmtVAlignTop", vAlign === "top");
   setActiveBtn("fmtVAlignMiddle", vAlign === "middle");
   setActiveBtn("fmtVAlignBottom", vAlign === "bottom");
 
-  // 垂直配置はテキストボックスでは無効
   ["fmtVAlignTop", "fmtVAlignMiddle", "fmtVAlignBottom"].forEach(id => {
     const b = document.getElementById(id);
-    if (b) b.disabled = !selectedCell;
+    if (b) b.disabled = !hasSel;
   });
 }
 
@@ -2310,7 +2329,7 @@ function addTextbox() {
     x: 14, y: 60, w: 60, h: 14,
     html: "テキストを入力",
     borderStyle: "solid", borderWidth: "0.5pt",
-    bg: "transparent", align: "left"
+    bg: "transparent", align: "left", vAlign: "top"
   };
   data.textboxes.push(tb);
   renderTextboxes();
@@ -2354,6 +2373,7 @@ function renderTextboxes() {
     if (!tb.borderStyle) tb.borderStyle = "solid";
     if (!tb.borderWidth) tb.borderWidth = "0.5pt";
     if (!tb.bg) tb.bg = "transparent";
+    if (!tb.vAlign) tb.vAlign = "top";
 
     const el = document.createElement("div");
     el.className = `floating-textbox border-style-${tb.borderStyle} bg-${tb.bg}`;
@@ -2364,7 +2384,7 @@ function renderTextboxes() {
     el.style.height = tb.h + "mm";
     if (tb.borderStyle !== "none") el.style.borderWidth = tb.borderWidth;
 
-    el.innerHTML = `<div class="tb-content" contenteditable="false" style="text-align:${tb.align || 'left'}">${tb.html}</div><div class="resize-handle"></div>`;
+    el.innerHTML = `<div class="tb-content valign-${tb.vAlign}" contenteditable="false" style="text-align:${tb.align || 'left'}">${tb.html}</div><div class="resize-handle"></div>`;
     layer.appendChild(el);
     setupTextboxBehavior(el, tb);
   });
