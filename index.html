@@ -726,6 +726,7 @@ input:focus, select:focus {
   font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
   font-size: 10pt;
 }
+.floating-textbox.selected,
 .floating-textbox.is-selected {
   border-color: var(--accent);
   outline: 1px solid var(--accent-soft);
@@ -737,10 +738,15 @@ input:focus, select:focus {
 }
 .resize-handle {
   position: absolute;
-  right: -4px; bottom: -4px;
-  width: 8px; height: 8px;
+  right: 0; bottom: 0;
+  width: 12px; height: 12px;
+  transform: translate(50%, 50%);
   background: var(--accent);
   border: 1px solid #fff;
+  cursor: nwse-resize;
+  z-index: 2;
+  pointer-events: auto;
+  touch-action: none;
 }
 
 /* ===== Status bar ===== */
@@ -2273,14 +2279,28 @@ function setupTextboxBehavior(el, tb) {
   let resizeStartX, resizeStartY, origW, origH;
   let motionHistorySnapshot = null;
 
+  function startResize(e) {
+    motionHistorySnapshot = createHistorySnapshot();
+    isResizing = true;
+    resizeStartX = e.clientX; resizeStartY = e.clientY;
+    origW = tb.w; origH = tb.h;
+    selectedTextbox = tb;
+    selectedCell = null;
+    el.classList.add("selected");
+    const ts = document.getElementById("textboxSettings");
+    if (ts) ts.style.display = "";
+    syncTextboxSettingsUI(tb);
+    updateFormatBar();
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  const resizeHandle = el.querySelector(".resize-handle");
+  if (resizeHandle) resizeHandle.addEventListener("mousedown", startResize);
+
   el.addEventListener("mousedown", (e) => {
     if (e.target.classList.contains("resize-handle")) {
-      motionHistorySnapshot = createHistorySnapshot();
-      isResizing = true;
-      resizeStartX = e.clientX; resizeStartY = e.clientY;
-      origW = tb.w; origH = tb.h;
-      e.preventDefault();
-      e.stopPropagation();
+      startResize(e);
       return;
     }
     if (el.classList.contains("editing")) return;
