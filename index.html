@@ -588,6 +588,8 @@ input:focus, select:focus {
 }
 .sheet {
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: 210mm;
   min-height: 297mm;
   background: var(--bg-paper);
@@ -657,6 +659,8 @@ input:focus, select:focus {
 
 .sheet-body {
   position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .sheet-body.cols-2 {
   column-count: 2;
