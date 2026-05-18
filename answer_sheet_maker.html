@@ -358,6 +358,12 @@ input:focus, select:focus {
 .rb-row .font-name { width: 130px; }
 .rb-row .font-size { width: 50px; }
 .rb-row .small-select { width: 88px; }
+.rb-row .mini-input {
+  width: 54px;
+  height: 22px;
+  padding: 1px 4px;
+  font-size: 11px;
+}
 
 .rb-sep { width: 1px; height: 18px; background: var(--line-light); margin: 0 4px; }
 
@@ -395,6 +401,13 @@ input:focus, select:focus {
 /* Tab panes (only one visible) */
 .ribbon-pane { display: none; flex: 1; min-width: 0; }
 .ribbon-pane.is-active { display: flex; }
+.ribbon-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+}
 
 /* ===== Main area ===== */
 .main {
@@ -988,13 +1001,13 @@ input:focus, select:focus {
 
   <!-- ============= RIBBON TABS ============= -->
   <div class="ribbon-tabs">
-    <button class="tab file-tab">ファイル</button>
-    <button class="tab is-active">ホーム</button>
-    <button class="tab">挿入</button>
-    <button class="tab">用紙</button>
-    <button class="tab">大問</button>
-    <button class="tab">表示</button>
-    <button class="tab">ヘルプ</button>
+    <button class="tab file-tab" data-tab="file">ファイル</button>
+    <button class="tab is-active" data-tab="home">ホーム</button>
+    <button class="tab" data-tab="insert">挿入</button>
+    <button class="tab" data-tab="paper">用紙</button>
+    <button class="tab" data-tab="question">大問</button>
+    <button class="tab" data-tab="view">表示</button>
+    <button class="tab" data-tab="help">ヘルプ</button>
     <div class="ribbon-tabs-right">
       <button class="small-btn"><svg><use href="#i-save"/></svg><span>保存</span></button>
       <button class="small-btn"><svg><use href="#i-folder"/></svg><span>読込</span></button>
@@ -1004,7 +1017,7 @@ input:focus, select:focus {
 
   <!-- ============= RIBBON BODY (ホーム pane) ============= -->
   <div class="ribbon-body">
-    <div class="ribbon-pane is-active">
+    <div class="ribbon-pane is-active" data-tab="home">
 
       <!-- ===== クリップボード ===== -->
       <div class="rb-group">
@@ -1168,6 +1181,141 @@ input:focus, select:focus {
         <div class="rb-group-name">配点</div>
       </div>
 
+    </div>
+
+    <div class="ribbon-pane" data-tab="file">
+      <div class="rb-group">
+        <div class="rb-group-content">
+          <button class="rb-big" data-action="new-document" title="新規作成">
+            <span class="ico"><svg><use href="#i-file"/></svg></span>
+            <span class="lbl">新規</span>
+          </button>
+          <button class="rb-big" data-action="import-json" title="JSONを開く">
+            <span class="ico"><svg><use href="#i-folder"/></svg></span>
+            <span class="lbl">開く</span>
+          </button>
+          <button class="rb-big" data-action="export-json" title="JSONを保存">
+            <span class="ico"><svg><use href="#i-save"/></svg></span>
+            <span class="lbl">保存</span>
+          </button>
+          <button class="rb-big" data-action="print" title="印刷またはPDF保存">
+            <span class="ico"><svg><use href="#i-print"/></svg></span>
+            <span class="lbl two-line">印刷<br>PDF</span>
+          </button>
+        </div>
+        <div class="rb-group-name">ファイル</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-group-content">
+          <button class="rb-small" data-action="export-json" title="名前を付けて保存"><span class="ico"><svg><use href="#i-save"/></svg></span><span>名前を付けて保存</span></button>
+          <button class="rb-small" data-action="print" title="印刷プレビュー"><span class="ico"><svg><use href="#i-print"/></svg></span><span>印刷プレビュー</span></button>
+        </div>
+        <div class="rb-group-name">出力</div>
+      </div>
+    </div>
+
+    <div class="ribbon-pane" data-tab="insert">
+      <div class="rb-group">
+        <div class="rb-group-content">
+          <button class="rb-big" data-action="add-question" title="大問追加">
+            <span class="ico"><svg><use href="#i-table"/></svg></span>
+            <span class="lbl two-line">解答欄<br>追加</span>
+          </button>
+          <button class="rb-big" data-action="add-textbox" title="入力枠追加">
+            <span class="ico"><svg><use href="#i-textbox"/></svg></span>
+            <span class="lbl two-line">テキスト<br>ボックス</span>
+          </button>
+        </div>
+        <div class="rb-group-name">挿入</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-group-content">
+          <div class="rb-stack">
+            <button class="rb-small" disabled title="v0.9で追加予定"><span class="ico"><svg><use href="#i-image"/></svg></span><span>画像</span></button>
+            <button class="rb-small" disabled title="今後追加予定"><span class="ico"><svg><use href="#i-shape"/></svg></span><span>図形</span></button>
+            <button class="rb-small" data-toggle-target="pageNum" title="ページ番号"><span class="ico"><svg><use href="#i-file"/></svg></span><span>ページ番号</span></button>
+          </div>
+        </div>
+        <div class="rb-group-name">要素</div>
+      </div>
+    </div>
+
+    <div class="ribbon-pane" data-tab="paper">
+      <div class="rb-group">
+        <div class="rb-group-content" style="flex-direction:column; gap:2px;">
+          <div class="rb-row">
+            <button class="rb-small" data-paper-size="A4">A4</button>
+            <button class="rb-small" data-paper-size="B5">B5</button>
+            <button class="rb-small" data-paper-size="B4">B4</button>
+            <button class="rb-small" data-paper-size="A3">A3</button>
+          </div>
+          <div class="rb-row">
+            <button class="rb-small" data-layout="縦置き 1段">縦1段</button>
+            <button class="rb-small" data-layout="縦置き 2段">縦2段</button>
+            <button class="rb-small" data-layout="横置き 1段">横1段</button>
+            <button class="rb-small" data-layout="横置き 2段">横2段</button>
+            <button class="rb-small" data-layout="横置き 3段">横3段</button>
+          </div>
+        </div>
+        <div class="rb-group-name">用紙</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-group-content" style="flex-direction:column; gap:2px;">
+          <div class="rb-row">
+            <label class="ribbon-field">上 <input class="mini-input" type="number" min="6" max="70" step="1" data-page-layout-field="topMargin"> mm</label>
+            <label class="ribbon-field">下 <input class="mini-input" type="number" min="8" max="40" step="1" data-page-layout-field="bottomMargin"> mm</label>
+          </div>
+          <div class="rb-row">
+            <button class="rb-small" data-toggle-target="centerLine">中央線</button>
+            <button class="rb-small" data-toggle-target="pageNum">ページ番号</button>
+          </div>
+        </div>
+        <div class="rb-group-name">余白と表示</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-group-content" style="flex-direction:column; gap:2px;">
+          <button class="rb-small" data-toggle-target="showSubScore">小問配点</button>
+          <button class="rb-small" data-toggle-target="showTotalScore">大問合計</button>
+        </div>
+        <div class="rb-group-name">配点</div>
+      </div>
+    </div>
+
+    <div class="ribbon-pane" data-tab="question">
+      <div class="rb-group">
+        <div class="rb-group-content">
+          <button class="rb-big" data-action="add-question" title="大問追加">
+            <span class="ico"><svg><use href="#i-q-add"/></svg></span>
+            <span class="lbl two-line">大問<br>追加</span>
+          </button>
+          <div class="rb-stack">
+            <button class="rb-small" data-action="delete-active-question" title="選択項目を削除"><span class="ico"><svg><use href="#i-q-del"/></svg></span><span>削除</span></button>
+          </div>
+        </div>
+        <div class="rb-group-name">大問</div>
+      </div>
+    </div>
+
+    <div class="ribbon-pane" data-tab="view">
+      <div class="rb-group">
+        <div class="rb-group-content">
+          <button class="rb-small" data-toggle-target="centerLine">中央線</button>
+          <button class="rb-small" data-toggle-target="pageNum">ページ番号</button>
+          <button class="rb-small" data-action="print">印刷プレビュー</button>
+        </div>
+        <div class="rb-group-name">表示</div>
+      </div>
+    </div>
+
+    <div class="ribbon-pane" data-tab="help">
+      <div class="rb-group">
+        <div class="rb-group-content">
+          <button class="rb-small" data-tab-jump="home">ホーム</button>
+          <button class="rb-small" data-tab-jump="insert">挿入</button>
+          <button class="rb-small" data-tab-jump="paper">用紙</button>
+        </div>
+        <div class="rb-group-name">移動</div>
+      </div>
     </div>
   </div>
 
@@ -1443,6 +1591,25 @@ const LAYOUT_MAP = {
   "横置き 3段": { orientation: "landscape", cols: 3 }
 };
 
+function createDefaultData() {
+  return {
+    title: "2学期期末テスト 数学",
+    questions: [
+      { id: 1, type: "writing", subCount: 5, cols: 1, rowHeight: 8,
+        totalScore: 25, subScores: [5,5,5,5,5], cells: {} },
+      { id: 2, type: "value", subCount: 4, cols: 2, rowHeight: 7,
+        totalScore: 20, subScores: [5,5,5,5], cells: {} },
+      { id: 3, type: "drawing", subCount: 3, cols: 1, rowHeight: 18,
+        totalScore: 25, subScores: [5,10,10], cells: {} },
+      { id: 4, type: "proof", subCount: 1, cols: 1, rowHeight: 50,
+        totalScore: 30, subScores: [30], cells: {} }
+    ],
+    textboxes: [],
+    activeQuestionId: 1,
+    pageLayout: normalizePageLayout()
+  };
+}
+
 function getLayoutInfo() {
   const sel = document.getElementById("layout");
   if (!sel) return { orientation: "portrait", cols: 2 };
@@ -1490,6 +1657,10 @@ function syncPageLayoutInputs() {
   const bottomMargin = document.getElementById("bottomMargin");
   if (topMargin) topMargin.value = settings.topMargin;
   if (bottomMargin) bottomMargin.value = settings.bottomMargin;
+  document.querySelectorAll("[data-page-layout-field]").forEach(input => {
+    const field = input.dataset.pageLayoutField;
+    if (field && settings[field] != null) input.value = settings[field];
+  });
 }
 
 function setupToggle(id) {
@@ -2601,8 +2772,106 @@ function importJSON() {
   input.click();
 }
 
+function newDocument() {
+  if (!confirm("新しい解答用紙を作成しますか？")) return;
+  recordHistory();
+  data = createDefaultData();
+  textboxIdCounter = 1;
+  selectedCell = null;
+  selectedTextbox = null;
+  syncTitle(data.title, { renderSheet: false });
+  const paperSize = document.getElementById("paperSize");
+  if (paperSize) paperSize.value = "A4";
+  const layout = document.getElementById("layout");
+  if (layout) layout.value = "縦置き 2段";
+  ["centerLine","pageNum"].forEach(id => document.getElementById(id)?.classList.add("is-on"));
+  ["showSubScore","showTotalScore"].forEach(id => document.getElementById(id)?.classList.remove("is-on"));
+  syncPageLayoutInputs();
+  renderQuestionList();
+  render();
+}
+
+function selectRibbonTab(name) {
+  const tabs = document.querySelectorAll(".ribbon-tabs .tab[data-tab]");
+  const panes = document.querySelectorAll(".ribbon-body .ribbon-pane[data-tab]");
+  tabs.forEach(tab => tab.classList.toggle("is-active", tab.dataset.tab === name));
+  panes.forEach(pane => pane.classList.toggle("is-active", pane.dataset.tab === name));
+  syncPageLayoutInputs();
+}
+
+function bindRibbonTabs() {
+  document.querySelectorAll(".ribbon-tabs .tab[data-tab]").forEach(tab => {
+    tab.addEventListener("click", () => selectRibbonTab(tab.dataset.tab));
+  });
+  document.querySelectorAll("[data-tab-jump]").forEach(btn => {
+    btn.addEventListener("click", () => selectRibbonTab(btn.dataset.tabJump));
+  });
+}
+
+function setPaperSize(value) {
+  const el = document.getElementById("paperSize");
+  if (!el || el.value === value) return;
+  recordHistory();
+  el.value = value;
+  render();
+  updateStatusBar();
+}
+
+function setPaperLayout(value) {
+  const el = document.getElementById("layout");
+  if (!el || el.value === value) return;
+  recordHistory();
+  el.value = value;
+  render();
+  updateStatusBar();
+}
+
+function setPageLayoutField(field, value) {
+  const current = ensurePageLayout();
+  const next = normalizePageLayout({ ...current, [field]: value });
+  if (current[field] === next[field]) {
+    syncPageLayoutInputs();
+    return;
+  }
+  recordHistory();
+  data.pageLayout = next;
+  syncPageLayoutInputs();
+  render();
+}
+
+function runRibbonAction(action) {
+  if (action === "new-document") newDocument();
+  if (action === "export-json") exportJSON();
+  if (action === "import-json") importJSON();
+  if (action === "print") window.print();
+  if (action === "add-question") addQuestion();
+  if (action === "add-textbox") addTextbox();
+  if (action === "delete-active-question" && data.activeQuestionId) deleteQuestion(data.activeQuestionId);
+}
+
+function bindRibbonCommands() {
+  document.querySelectorAll("[data-action]").forEach(btn => {
+    btn.addEventListener("click", () => runRibbonAction(btn.dataset.action));
+  });
+  document.querySelectorAll("[data-paper-size]").forEach(btn => {
+    btn.addEventListener("click", () => setPaperSize(btn.dataset.paperSize));
+  });
+  document.querySelectorAll("[data-layout]").forEach(btn => {
+    btn.addEventListener("click", () => setPaperLayout(btn.dataset.layout));
+  });
+  document.querySelectorAll("[data-toggle-target]").forEach(btn => {
+    btn.addEventListener("click", () => document.getElementById(btn.dataset.toggleTarget)?.click());
+  });
+  document.querySelectorAll("[data-page-layout-field]").forEach(input => {
+    input.addEventListener("change", () => setPageLayoutField(input.dataset.pageLayoutField, input.value));
+  });
+}
+
 /* ========= イベント登録 ========= */
 function bindEvents() {
+  bindRibbonTabs();
+  bindRibbonCommands();
+
   // トグル
   setupToggle("centerLine");
   setupToggle("pageNum");
