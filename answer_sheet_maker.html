@@ -130,6 +130,10 @@ input:focus, select:focus {
   display: inline-flex; align-items: center; justify-content: center;
 }
 .qa-btn svg { width: 14px; height: 14px; }
+.qa-btn:disabled {
+  opacity: .38;
+  cursor: default;
+}
 .qa-sep { width: 1px; height: 16px; background: var(--line-mid); margin: 0 4px; }
 
 .title-center {
@@ -914,8 +918,8 @@ input:focus, select:focus {
     <div class="qa">
       <span class="app-mark" title="解答用紙メーカー"><svg><use href="#i-appmark"/></svg></span>
       <button class="qa-btn" title="上書き保存"><svg><use href="#i-save"/></svg></button>
-      <button class="qa-btn" title="元に戻す"><svg><use href="#i-undo"/></svg></button>
-      <button class="qa-btn" title="やり直し"><svg><use href="#i-redo"/></svg></button>
+      <button id="undoBtn" class="qa-btn" title="元に戻す" disabled><svg><use href="#i-undo"/></svg></button>
+      <button id="redoBtn" class="qa-btn" title="やり直し" disabled><svg><use href="#i-redo"/></svg></button>
       <span class="qa-sep"></span>
       <button class="qa-btn" title="クイックアクセス ツール バーのカスタマイズ"><svg><use href="#i-caret-d"/></svg></button>
     </div>
@@ -1376,6 +1380,10 @@ let data = {
 let selectedCell = null;
 let selectedTextbox = null;
 let textboxIdCounter = 1;
+const HISTORY_LIMIT = 50;
+let undoStack = [];
+let redoStack = [];
+let activeHistorySnapshot = null;
 
 /* ========= layout値の正規化（v0.4 UIでは日本語表記） =========
    旧: "portrait-2" / "landscape-1"
@@ -1406,9 +1414,117 @@ function setupToggle(id) {
   const el = document.getElementById(id);
   if (!el) return;
   el.addEventListener("click", () => {
+    recordHistory();
     el.classList.toggle("is-on");
     render();
   });
+}
+
+/* ========= Undo / Redo ========= */
+function clonePlain(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function getSettingsSnapshot() {
+  return {
+    title: document.getElementById("title")?.value || data.title || "解答用紙",
+    paperSize: document.getElementById("paperSize")?.value || "A4",
+    layout: document.getElementById("layout")?.value || "縦置き 2段",
+    centerLine: isToggleOn("centerLine"),
+    pageNum: isToggleOn("pageNum"),
+    showSubScore: isToggleOn("showSubScore"),
+    showTotalScore: isToggleOn("showTotalScore")
+  };
+}
+
+function createHistorySnapshot() {
+  return {
+    data: clonePlain(data),
+    textboxIdCounter,
+    settings: getSettingsSnapshot()
+  };
+}
+
+function snapshotsEqual(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function pushUndoSnapshot(snapshot) {
+  const latest = undoStack[undoStack.length - 1];
+  if (latest && snapshotsEqual(latest, snapshot)) return;
+  undoStack.push(snapshot);
+  if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+  redoStack = [];
+  updateHistoryButtons();
+}
+
+function recordHistory() {
+  pushUndoSnapshot(createHistorySnapshot());
+}
+
+function beginHistoryInteraction() {
+  if (!activeHistorySnapshot) activeHistorySnapshot = createHistorySnapshot();
+}
+
+function commitHistoryInteraction() {
+  if (!activeHistorySnapshot) return;
+  if (!snapshotsEqual(activeHistorySnapshot, createHistorySnapshot())) {
+    pushUndoSnapshot(activeHistorySnapshot);
+  }
+  activeHistorySnapshot = null;
+}
+
+function applySettingsSnapshot(settings) {
+  if (!settings) return;
+  syncTitle(settings.title || data.title, { renderSheet: false });
+  const paperSize = document.getElementById("paperSize");
+  if (paperSize) paperSize.value = settings.paperSize || "A4";
+  const layout = document.getElementById("layout");
+  if (layout) layout.value = settings.layout || "縦置き 2段";
+  ["centerLine","pageNum","showSubScore","showTotalScore"].forEach(key => {
+    const sw = document.getElementById(key);
+    if (!sw) return;
+    if (settings[key]) sw.classList.add("is-on");
+    else sw.classList.remove("is-on");
+  });
+}
+
+function restoreHistorySnapshot(snapshot) {
+  data = clonePlain(snapshot.data);
+  textboxIdCounter = snapshot.textboxIdCounter || 1;
+  selectedCell = null;
+  selectedTextbox = null;
+  activeHistorySnapshot = null;
+  applySettingsSnapshot(snapshot.settings);
+  renderQuestionList();
+  render();
+}
+
+function undo() {
+  if (!undoStack.length) return;
+  redoStack.push(createHistorySnapshot());
+  const snapshot = undoStack.pop();
+  restoreHistorySnapshot(snapshot);
+  updateHistoryButtons();
+}
+
+function redo() {
+  if (!redoStack.length) return;
+  undoStack.push(createHistorySnapshot());
+  const snapshot = redoStack.pop();
+  restoreHistorySnapshot(snapshot);
+  updateHistoryButtons();
+}
+
+function updateHistoryButtons() {
+  const undoBtn = document.getElementById("undoBtn");
+  const redoBtn = document.getElementById("redoBtn");
+  if (undoBtn) undoBtn.disabled = undoStack.length === 0;
+  if (redoBtn) redoBtn.disabled = redoStack.length === 0;
+}
+
+function isEditingText(target) {
+  return !!target.closest?.('[contenteditable="true"], input, textarea, select');
 }
 
 /* ========= 大問リスト（左ナビ） ========= */
@@ -1531,10 +1647,15 @@ function renderQuestionList() {
       detail.querySelectorAll("[data-field]").forEach(input => {
         const handler = () => updateQ(q.id, input.dataset.field, input.value);
         if (input.type === "range") {
+          input.addEventListener("pointerdown", beginHistoryInteraction);
+          input.addEventListener("focus", beginHistoryInteraction);
+          input.addEventListener("change", commitHistoryInteraction);
+          input.addEventListener("blur", commitHistoryInteraction);
           input.addEventListener("input", () => {
             const label = detail.querySelector("[data-rh-label]");
             if (label) label.textContent = input.value + "mm";
-            updateQ(q.id, "rowHeight", input.value);
+            updateQ(q.id, "rowHeight", input.value, { recordHistory: false });
+            commitHistoryInteraction();
           });
         } else {
           input.addEventListener("change", handler);
@@ -1574,24 +1695,34 @@ function toggleQuestion(id) {
   renderQuestionList();
 }
 
-function updateQ(id, field, value) {
+function updateQ(id, field, value, options = {}) {
   const q = data.questions.find(q => q.id === id);
   if (!q) return;
+  const shouldRecord = options.recordHistory !== false;
+  let nextValue = value;
   if (field === "subCount") {
     const newCount = Number(value);
+    if (q.subCount === newCount) return;
+    if (shouldRecord) recordHistory();
     q.subCount = newCount;
     while (q.subScores.length < newCount) q.subScores.push(5);
     q.subScores = q.subScores.slice(0, newCount);
   } else if (field === "cols" || field === "rowHeight" || field === "totalScore") {
-    q[field] = Number(value);
+    nextValue = Number(value);
+    if (q[field] === nextValue) return;
+    if (shouldRecord) recordHistory();
+    q[field] = nextValue;
   } else {
-    q[field] = value;
+    if (q[field] === nextValue) return;
+    if (shouldRecord) recordHistory();
+    q[field] = nextValue;
   }
   renderQuestionList();
   render();
 }
 
 function addQuestion() {
+  recordHistory();
   const newId = Math.max(...data.questions.map(q => q.id), 0) + 1;
   data.questions.push({
     id: newId, type: "writing", subCount: 3, cols: 1, rowHeight: 8,
@@ -1604,6 +1735,7 @@ function addQuestion() {
 
 function deleteQuestion(id) {
   if (!confirm("この大問を削除しますか？")) return;
+  recordHistory();
   data.questions = data.questions.filter(q => q.id !== id);
   if (data.activeQuestionId === id) data.activeQuestionId = data.questions[0]?.id || null;
   renderQuestionList();
@@ -1718,6 +1850,7 @@ function render() {
   const titleEl = sheet.querySelector(".sheet-header .title");
   if (titleEl) {
     titleEl.addEventListener("focus", () => {
+      beginHistoryInteraction();
       titleEl.classList.add("is-active");
     });
     titleEl.addEventListener("input", () => {
@@ -1728,6 +1861,7 @@ function render() {
       const normalizedTitle = normalizeTitle(titleEl.textContent);
       titleEl.textContent = normalizedTitle;
       syncTitle(normalizedTitle, { renderSheet: false });
+      commitHistoryInteraction();
     });
     titleEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -1776,6 +1910,7 @@ function render() {
   }
 
   updateStatusBar();
+  updateHistoryButtons();
 }
 
 function escapeHtml(s) {
@@ -1964,6 +2099,7 @@ function clearCellText() {
 
 function deleteSelected() {
   if (selectedTextbox) {
+    recordHistory();
     data.textboxes = data.textboxes.filter(t => t.id !== selectedTextbox.id);
     selectedTextbox = null;
     const ts = document.getElementById("textboxSettings");
@@ -2035,6 +2171,7 @@ function setActiveBtn(id, on) {
 
 /* ========= テキストボックス ========= */
 function addTextbox() {
+  recordHistory();
   const tb = {
     id: textboxIdCounter++,
     x: 14, y: 60, w: 60, h: 14,
@@ -2106,6 +2243,7 @@ function setupTextboxBehavior(el, tb) {
 
   el.addEventListener("mousedown", (e) => {
     if (e.target.classList.contains("resize-handle")) {
+      beginHistoryInteraction();
       isResizing = true;
       resizeStartX = e.clientX; resizeStartY = e.clientY;
       origW = tb.w; origH = tb.h;
@@ -2114,6 +2252,7 @@ function setupTextboxBehavior(el, tb) {
       return;
     }
     if (el.classList.contains("editing")) return;
+    beginHistoryInteraction();
 
     document.querySelectorAll(".ans-cell.selected").forEach(c => c.classList.remove("selected"));
     selectedCell = null;
@@ -2156,6 +2295,7 @@ function setupTextboxBehavior(el, tb) {
   content.addEventListener("keyup", updateFormatBar);
   content.addEventListener("mouseup", updateFormatBar);
   content.addEventListener("focus", () => {
+    beginHistoryInteraction();
     selectedTextbox = tb;
     selectedCell = null;
     updateFormatBar();
@@ -2179,7 +2319,13 @@ function setupTextboxBehavior(el, tb) {
       el.style.height = tb.h + "mm";
     }
   });
-  document.addEventListener("mouseup", () => { isDragging = false; isResizing = false; });
+  content.addEventListener("blur", commitHistoryInteraction);
+
+  document.addEventListener("mouseup", () => {
+    if (isDragging || isResizing) commitHistoryInteraction();
+    isDragging = false;
+    isResizing = false;
+  });
 }
 
 function updateTextboxStyle(prop, rawValue) {
@@ -2192,7 +2338,9 @@ function updateTextboxStyle(prop, rawValue) {
   let value = rawValue;
   if (prop === "borderStyle" && styleMap[rawValue]) value = styleMap[rawValue];
   if (prop === "bg" && bgMap[rawValue]) value = bgMap[rawValue];
+  if (selectedTextbox[prop] === value) return;
 
+  recordHistory();
   selectedTextbox[prop] = value;
   const el = document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"]`);
   if (!el) return;
@@ -2243,6 +2391,7 @@ function importJSON() {
     const reader = new FileReader();
     reader.onload = (e) => {
       const loaded = JSON.parse(e.target.result);
+      recordHistory();
       data.title = loaded.title || loaded.settings?.title || data.title;
       data.questions = loaded.questions || data.questions;
       data.textboxes = loaded.textboxes || [];
@@ -2282,7 +2431,15 @@ function bindEvents() {
   // 用紙設定
   ["paperSize","layout"].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.addEventListener("change", render);
+    if (el) {
+      el.addEventListener("pointerdown", beginHistoryInteraction);
+      el.addEventListener("focus", beginHistoryInteraction);
+      el.addEventListener("change", () => {
+        render();
+        commitHistoryInteraction();
+      });
+      el.addEventListener("blur", commitHistoryInteraction);
+    }
   });
 
   // フォント
@@ -2312,6 +2469,9 @@ function bindEvents() {
   if (tbWidth) tbWidth.addEventListener("change", () => updateTextboxStyle("borderWidth", tbWidth.value));
   const tbBg = document.getElementById("tbBg");
   if (tbBg) tbBg.addEventListener("change", () => updateTextboxStyle("bg", tbBg.value));
+
+  bind("undoBtn", undo);
+  bind("redoBtn", redo);
 
   // リボン上部右のアクション（保存・読込・印刷）
   const ribbonActions = document.querySelectorAll(".ribbon-tabs-right .small-btn");
@@ -2371,6 +2531,21 @@ function bindEvents() {
 
   // Delete キーでテキストボックス削除
   document.addEventListener("keydown", (e) => {
+    const key = e.key.toLowerCase();
+    const modifier = e.ctrlKey || e.metaKey;
+    if (modifier && !isEditingText(e.target)) {
+      if (key === "z") {
+        if (e.shiftKey) redo();
+        else undo();
+        e.preventDefault();
+        return;
+      }
+      if (key === "y") {
+        redo();
+        e.preventDefault();
+        return;
+      }
+    }
     if ((e.key === "Delete" || e.key === "Backspace") && selectedTextbox) {
       const el = document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"]`);
       if (el && !el.classList.contains("editing")) {
