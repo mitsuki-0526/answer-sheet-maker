@@ -135,6 +135,10 @@ let data = {
     title: "...",
     paperSize: "A4",        // A4/B5/B4/A3
     layout: "縦置き 2段",     // 縦置き 1段/2段、横置き 1段/2段/3段
+    pageLayout: {
+      headerHeight: 38,       // ヘッダー領域の最小高さ(mm)
+      bottomMargin: 18        // 用紙下余白(mm)
+    },
     centerLine: true,        // 段組み中央線
     pageNum: true,           // ページ番号
     showSubScore: false,     // 小問配点表示
@@ -281,6 +285,8 @@ font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
 ### 5.2 ヘッダー
 - [ ] タイトル表示（リボン側のUI未実装）
 - [ ] 年・組・番号・氏名の罫線テーブル
+- [ ] ヘッダー領域の高さ調整
+- [ ] 用紙下余白の調整
 
 ### 5.3 大問管理
 - [ ] 大問の追加
