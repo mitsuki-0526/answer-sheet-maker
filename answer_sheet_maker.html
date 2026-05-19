@@ -902,6 +902,46 @@ input:focus, select:focus {
   white-space: break-spaces;
 }
 .cell-inner:focus { outline: none; }
+.answer-inner {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 5mm;
+  box-sizing: border-box;
+  outline: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: break-spaces;
+  color: #d64f86;
+  display: none;
+  margin-top: 1mm;
+}
+.answer-inner:not(:empty),
+body.answer-input-mode .answer-inner {
+  display: block;
+}
+body.answer-input-mode .cell-inner {
+  pointer-events: none;
+}
+body.answer-input-mode .answer-inner {
+  pointer-events: auto;
+  background: rgba(214, 79, 134, 0.08);
+  outline: 1px dashed rgba(214, 79, 134, 0.5);
+  outline-offset: 1mm;
+}
+body:not(.answer-input-mode) .answer-inner {
+  pointer-events: none;
+}
+@media print {
+  .answer-inner {
+    display: none !important;
+    margin-top: 0;
+  }
+  body.print-answers .answer-inner:not(:empty) {
+    display: block !important;
+    color: #d64f86 !important;
+  }
+}
 
 .page-num {
   text-align: center;
@@ -1398,6 +1438,16 @@ input:focus, select:focus {
           <div class="rb-row">
             <button id="showTotalScore" class="toggle" title="大問の合計 (C)">
               <span class="sw"></span><span>大問合計</span>
+            </button>
+          </div>
+          <div class="rb-row">
+            <button id="answerInputMode" class="toggle" title="解答文字入力モード">
+              <span class="sw"></span><span>解答入力</span>
+            </button>
+          </div>
+          <div class="rb-row">
+            <button id="showAnswerText" class="toggle" title="PDFに解答文字を表示">
+              <span class="sw"></span><span>PDF解答表示</span>
             </button>
           </div>
           <div class="rb-row" style="margin-top:auto">
@@ -1988,12 +2038,22 @@ function syncPageLayoutInputs() {
   });
 }
 
+function syncAnswerModeClasses() {
+  document.body.classList.toggle("answer-input-mode", isToggleOn("answerInputMode"));
+  document.body.classList.toggle("print-answers", isToggleOn("showAnswerText"));
+  if (selectedCell) selectedCell.editTarget = isToggleOn("answerInputMode") ? "answer" : "body";
+  updateFormatBar();
+}
+
 function setupToggle(id) {
   const el = document.getElementById(id);
   if (!el) return;
   el.addEventListener("click", () => {
     recordHistory();
     el.classList.toggle("is-on");
+    if (id === "answerInputMode" || id === "showAnswerText") {
+      syncAnswerModeClasses();
+    }
     render();
   });
 }
@@ -2012,7 +2072,8 @@ function getSettingsSnapshot() {
     centerLine: isToggleOn("centerLine"),
     pageNum: isToggleOn("pageNum"),
     showSubScore: isToggleOn("showSubScore"),
-    showTotalScore: isToggleOn("showTotalScore")
+    showTotalScore: isToggleOn("showTotalScore"),
+    showAnswerText: isToggleOn("showAnswerText")
   };
 }
 
@@ -2077,12 +2138,14 @@ function applySettingsSnapshot(settings) {
   if (layout) layout.value = settings.layout || "縦置き 2段";
   data.pageLayout = normalizePageLayout(settings.pageLayout || settings);
   syncPageLayoutInputs();
-  ["centerLine","pageNum","showSubScore","showTotalScore"].forEach(key => {
+  ["centerLine","pageNum","showSubScore","showTotalScore","showAnswerText"].forEach(key => {
     const sw = document.getElementById(key);
     if (!sw) return;
     if (settings[key]) sw.classList.add("is-on");
     else sw.classList.remove("is-on");
   });
+  document.getElementById("answerInputMode")?.classList.remove("is-on");
+  syncAnswerModeClasses();
 }
 
 function restoreHistorySnapshot(snapshot) {
@@ -2424,8 +2487,10 @@ function renderAnswerCell(q, key, heightMm, defaultVAlign = "top") {
   const cellData = (q.cells && q.cells[key]) || {};
   const vAlignClass = cellData.vAlign ? `valign-${cellData.vAlign}` : `valign-${defaultVAlign}`;
   const innerHtml = cellData.html || "";
+  const answerHtml = cellData.answerHtml || "";
   return `<div class="ans-cell ${vAlignClass}" data-qid="${q.id}" data-sub="${key}" style="min-height:${heightMm}mm;">
     <div class="cell-inner" contenteditable="true">${innerHtml}</div>
+    <div class="answer-inner" contenteditable="true">${answerHtml}</div>
   </div>`;
 }
 
@@ -2499,7 +2564,7 @@ function renderQuestionBlock(q, qNum, showSubScore, showTotalScore) {
 
 /* ========= シート描画 ========= */
 function render() {
-  const savedCell = selectedCell ? { qId: selectedCell.qId, subIdx: selectedCell.subIdx } : null;
+  const savedCell = selectedCell ? { qId: selectedCell.qId, subIdx: selectedCell.subIdx, editTarget: selectedCell.editTarget } : null;
   const savedTextboxId = selectedTextbox ? selectedTextbox.id : null;
   const savedImageId = selectedImage ? selectedImage.id : null;
 
@@ -2513,6 +2578,7 @@ function render() {
   const showTotalScore = isToggleOn("showTotalScore");
   const pageLayout = ensurePageLayout();
   const header = ensureHeaderFields();
+  syncAnswerModeClasses();
 
   const titleInput = document.getElementById("title");
   const title = titleInput ? titleInput.value : (data.title || "解答用紙");
@@ -2636,19 +2702,27 @@ function render() {
   container.querySelectorAll(".ans-cell").forEach(cell => {
     if (cell.classList.contains("subpart-host")) return;
     const inner = cell.querySelector(".cell-inner");
+    const answerInner = cell.querySelector(".answer-inner");
     cell.addEventListener("mousedown", (e) => {
-      if (!e.target.closest(".cell-inner")) {
+      if (!e.target.closest(".cell-inner") && !e.target.closest(".answer-inner")) {
         e.preventDefault();
         doSelectCell(cell);
-        focusEditableAtStart(inner);
+        focusEditableAtStart(isToggleOn("answerInputMode") ? answerInner : inner);
       }
     });
     if (inner) {
-      inner.addEventListener("focus", () => doSelectCell(cell));
-      inner.addEventListener("input", () => onCellInput(inner));
+      inner.addEventListener("focus", () => doSelectCell(cell, "body"));
+      inner.addEventListener("input", () => onCellInput(inner, "html"));
       inner.addEventListener("blur", commitHistoryInteraction);
       inner.addEventListener("keyup", updateFormatBar);
       inner.addEventListener("mouseup", updateFormatBar);
+    }
+    if (answerInner) {
+      answerInner.addEventListener("focus", () => doSelectCell(cell, "answer"));
+      answerInner.addEventListener("input", () => onCellInput(answerInner, "answerHtml"));
+      answerInner.addEventListener("blur", commitHistoryInteraction);
+      answerInner.addEventListener("keyup", updateFormatBar);
+      answerInner.addEventListener("mouseup", updateFormatBar);
     }
   });
 
@@ -2664,7 +2738,7 @@ function render() {
     const el = container.querySelector(`.ans-cell[data-qid="${savedCell.qId}"][data-sub="${savedCell.subIdx}"]`);
     if (el) {
       el.classList.add("selected");
-      selectedCell = { qId: savedCell.qId, subIdx: savedCell.subIdx, element: el };
+      selectedCell = { qId: savedCell.qId, subIdx: savedCell.subIdx, editTarget: savedCell.editTarget || "body", element: el };
       updateFormatBar();
     }
   }
@@ -2770,7 +2844,7 @@ function updateStatusBar() {
 }
 
 /* ========= セル選択 ========= */
-function doSelectCell(cellOuter) {
+function doSelectCell(cellOuter, editTarget = null) {
   // テキストボックスの選択を解除
   document.querySelectorAll(".floating-textbox.selected").forEach(t => {
     t.classList.remove("selected", "editing");
@@ -2787,11 +2861,11 @@ function doSelectCell(cellOuter) {
   cellOuter.classList.add("selected");
   const qId = Number(cellOuter.dataset.qid);
   const subIdx = cellOuter.dataset.sub;
-  selectedCell = { qId, subIdx, element: cellOuter };
+  selectedCell = { qId, subIdx, element: cellOuter, editTarget: editTarget || (isToggleOn("answerInputMode") ? "answer" : "body") };
   updateFormatBar();
 }
 
-function onCellInput(inner) {
+function onCellInput(inner, field = "html") {
   const outer = inner.closest(".ans-cell");
   if (!outer) return;
   beginHistoryInteraction();
@@ -2799,7 +2873,7 @@ function onCellInput(inner) {
   const subIdx = outer.dataset.sub;
   const q = data.questions.find(q => q.id === qId);
   if (!q) return;
-  getCellData(q, subIdx).html = inner.innerHTML;
+  getCellData(q, subIdx)[field] = inner.innerHTML;
   scheduleHistoryInteractionCommit();
 }
 
@@ -2807,7 +2881,9 @@ function onCellInput(inner) {
 function hasActiveEditTarget() { return selectedCell || selectedTextbox; }
 
 function getActiveEditElement() {
-  if (selectedCell) return selectedCell.element.querySelector(".cell-inner");
+  if (selectedCell) {
+    return selectedCell.element.querySelector(selectedCell.editTarget === "answer" ? ".answer-inner" : ".cell-inner");
+  }
   if (selectedTextbox) {
     const tb = document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"]`);
     return tb ? tb.querySelector(".tb-content") : null;
@@ -2880,7 +2956,7 @@ function setAlign(align) {
     const q = data.questions.find(q => q.id === selectedCell.qId);
     const cellData = getCellData(q, selectedCell.subIdx);
     cellData.align = align;
-    cellData.html = target.innerHTML;
+    cellData[selectedCell.editTarget === "answer" ? "answerHtml" : "html"] = target.innerHTML;
   } else if (selectedTextbox) {
     selectedTextbox.align = align;
     selectedTextbox.html = target.innerHTML;
@@ -2911,9 +2987,11 @@ function setVAlign(vAlign) {
 function saveCellState() {
   if (selectedCell) {
     const inner = selectedCell.element.querySelector(".cell-inner");
-    if (!inner) return;
+    const answerInner = selectedCell.element.querySelector(".answer-inner");
     const q = data.questions.find(q => q.id === selectedCell.qId);
-    getCellData(q, selectedCell.subIdx).html = inner.innerHTML;
+    const cellData = getCellData(q, selectedCell.subIdx);
+    if (inner) cellData.html = inner.innerHTML;
+    if (answerInner) cellData.answerHtml = answerInner.innerHTML;
   } else if (selectedTextbox) {
     const tb = document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"] .tb-content`);
     if (tb) selectedTextbox.html = tb.innerHTML;
@@ -3430,12 +3508,14 @@ function importJSON() {
         if (ps) ps.value = loaded.settings.paperSize || "A4";
         const lo = document.getElementById("layout");
         if (lo) lo.value = loaded.settings.layout || "縦置き 2段";
-        ["centerLine","pageNum","showSubScore","showTotalScore"].forEach(key => {
+        ["centerLine","pageNum","showSubScore","showTotalScore","showAnswerText"].forEach(key => {
           const sw = document.getElementById(key);
           if (!sw) return;
           if (loaded.settings[key]) sw.classList.add("is-on");
           else sw.classList.remove("is-on");
         });
+        document.getElementById("answerInputMode")?.classList.remove("is-on");
+        syncAnswerModeClasses();
       } else {
         syncTitle(data.title, { renderSheet: false });
       }
@@ -3462,7 +3542,8 @@ function newDocument() {
   const layout = document.getElementById("layout");
   if (layout) layout.value = "縦置き 2段";
   ["centerLine","pageNum"].forEach(id => document.getElementById(id)?.classList.add("is-on"));
-  ["showSubScore","showTotalScore"].forEach(id => document.getElementById(id)?.classList.remove("is-on"));
+  ["showSubScore","showTotalScore","answerInputMode","showAnswerText"].forEach(id => document.getElementById(id)?.classList.remove("is-on"));
+  syncAnswerModeClasses();
   syncPageLayoutInputs();
   renderQuestionList();
   render();
@@ -3556,6 +3637,8 @@ function bindEvents() {
   setupToggle("pageNum");
   setupToggle("showSubScore");
   setupToggle("showTotalScore");
+  setupToggle("answerInputMode");
+  setupToggle("showAnswerText");
 
   // 用紙設定
   ["paperSize","layout"].forEach(id => {
