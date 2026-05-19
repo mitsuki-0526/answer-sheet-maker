@@ -613,9 +613,7 @@ input:focus, select:focus {
   font-size: 10pt;
 }
 .sheet + .sheet { margin-top: 18mm; }
-.sheet-header {
-  margin-bottom: 8mm;
-}
+.sheet-header { margin-bottom: 5mm; }
 .page-layout-settings {
   margin-top: 14px;
   padding: 10px;
@@ -635,14 +633,16 @@ input:focus, select:focus {
 .sheet-header .title {
   font-size: 18pt;
   font-weight: 700;
-  margin: 0 0 6mm;
+  line-height: 1.18;
+  margin: 0 0 3mm;
   letter-spacing: 0.04em;
+  white-space: pre-wrap;
 }
 .sheet-header .title[contenteditable="true"] {
   cursor: text;
-  border-radius: 2mm;
+  border-radius: 1.5mm;
   outline: 1px solid transparent;
-  outline-offset: 1mm;
+  outline-offset: 0.5mm;
 }
 .sheet-header .title[contenteditable="true"]:hover,
 .sheet-header .title[contenteditable="true"]:focus {
@@ -653,7 +653,7 @@ input:focus, select:focus {
   border-collapse: collapse;
   width: 100%;
   max-width: 110mm;
-  margin-bottom: 4mm;
+  margin-bottom: 3mm;
 }
 .hdr-table th, .hdr-table td {
   border: 1px solid var(--line-print);
@@ -668,7 +668,7 @@ input:focus, select:focus {
 .sheet-header hr.divider {
   border: none;
   border-top: 1.5pt solid var(--line-print);
-  margin: 4mm 0 0;
+  margin: 3mm 0 0;
 }
 
 .sheet-body {
@@ -2309,14 +2309,15 @@ function render() {
       titleEl.classList.add("is-active");
     });
     titleEl.addEventListener("input", () => {
-      syncTitle(titleEl.textContent, { renderSheet: false });
+      const titleText = getEditableTitleText(titleEl);
+      syncTitle(titleText, { renderSheet: false });
       container.querySelectorAll(".sheet-header .title").forEach(other => {
-        if (other !== titleEl) other.textContent = titleEl.textContent;
+        if (other !== titleEl) other.textContent = titleText;
       });
     });
     titleEl.addEventListener("blur", () => {
       titleEl.classList.remove("is-active");
-      const normalizedTitle = normalizeTitle(titleEl.textContent);
+      const normalizedTitle = normalizeTitle(getEditableTitleText(titleEl));
       container.querySelectorAll(".sheet-header .title").forEach(other => {
         other.textContent = normalizedTitle;
       });
@@ -2324,7 +2325,7 @@ function render() {
       commitHistoryInteraction();
     });
     titleEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         titleEl.blur();
       }
@@ -2393,8 +2394,18 @@ function escapeHtml(s) {
 }
 
 function normalizeTitle(value) {
-  const title = String(value || "").replace(/\s+/g, " ").trim();
+  const title = String(value || "")
+    .replace(/\r/g, "")
+    .split("\n")
+    .map(line => line.replace(/[ \t]+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
   return title || "解答用紙";
+}
+
+function getEditableTitleText(el) {
+  return (el.innerText || el.textContent || "").replace(/\u00a0/g, " ");
 }
 
 function syncTitle(value, options = {}) {
@@ -2403,7 +2414,8 @@ function syncTitle(value, options = {}) {
   const titleInput = document.getElementById("title");
   if (titleInput && titleInput.value !== title) titleInput.value = title;
   const docName = document.getElementById("docName");
-  if (docName && docName.textContent !== title) docName.textContent = title;
+  const titleForChrome = title.replace(/\s*\n+\s*/g, " ");
+  if (docName && docName.textContent !== titleForChrome) docName.textContent = titleForChrome;
   if (options.renderSheet) render();
 }
 
