@@ -651,10 +651,11 @@ input:focus, select:focus {
 }
 .hdr-table {
   border-collapse: collapse;
-  width: 100%;
-  max-width: 125mm;
+  width: auto;
+  max-width: 100%;
+  min-width: 105mm;
   margin-bottom: 3mm;
-  table-layout: fixed;
+  table-layout: auto;
 }
 .hdr-table th, .hdr-table td {
   border: 1px solid var(--line-print);
@@ -665,8 +666,20 @@ input:focus, select:focus {
   height: 6mm;
 }
 .hdr-table th { width: 10mm; background: transparent; }
-.hdr-table td { width: 8mm; }
-.hdr-table td.name { width: 56mm; }
+.hdr-table td {
+  min-width: 8mm;
+  white-space: break-spaces;
+}
+.hdr-table td.name { min-width: 56mm; }
+.hdr-table td[contenteditable="true"] {
+  cursor: text;
+  outline: none;
+}
+.hdr-table td[contenteditable="true"]:focus {
+  background: var(--accent-soft);
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
 .sheet-header hr.divider {
   border: none;
   border-top: 1.5pt solid var(--line-print);
@@ -1668,6 +1681,12 @@ let data = {
     { id: 4, type: "proof", subCount: 1, cols: 1, rowHeight: 50,
       totalScore: 30, subScores: [30], cells: {} }
   ],
+  header: {
+    year: "",
+    className: "",
+    number: "",
+    name: ""
+  },
   textboxes: [],
   images: [],
   activeQuestionId: 1
@@ -1720,6 +1739,12 @@ function createDefaultData() {
       { id: 4, type: "proof", subCount: 1, cols: 1, rowHeight: 50,
         totalScore: 30, subScores: [30], cells: {} }
     ],
+    header: {
+      year: "",
+      className: "",
+      number: "",
+      name: ""
+    },
     textboxes: [],
     images: [],
     activeQuestionId: 1,
@@ -2267,6 +2292,7 @@ function render() {
   const showSubScore = isToggleOn("showSubScore");
   const showTotalScore = isToggleOn("showTotalScore");
   const pageLayout = ensurePageLayout();
+  const header = ensureHeaderFields();
 
   const titleInput = document.getElementById("title");
   const title = titleInput ? titleInput.value : (data.title || "解答用紙");
@@ -2316,6 +2342,15 @@ function render() {
 
     sheet.innerHTML = html;
     container.appendChild(sheet);
+    ["year", "className", "number", "name"].forEach((field, index) => {
+      const cell = sheet.querySelectorAll(".hdr-table td")[index];
+      if (!cell) return;
+      cell.dataset.headerField = field;
+      cell.contentEditable = "true";
+      cell.spellcheck = false;
+      cell.textContent = header[field] || "";
+      if (field === "name") cell.classList.add("name");
+    });
   });
 
   // セル選択ハンドラを登録
@@ -2350,6 +2385,34 @@ function render() {
   });
 
   // セル選択ハンドラを登録
+  container.querySelectorAll("[data-header-field]").forEach(fieldEl => {
+    const field = fieldEl.dataset.headerField;
+    fieldEl.addEventListener("focus", beginHistoryInteraction);
+    fieldEl.addEventListener("input", () => {
+      const text = getEditableHeaderText(fieldEl);
+      const headerFields = ensureHeaderFields();
+      headerFields[field] = text;
+      container.querySelectorAll(`[data-header-field="${field}"]`).forEach(other => {
+        if (other !== fieldEl) other.textContent = text;
+      });
+    });
+    fieldEl.addEventListener("blur", () => {
+      const text = getEditableHeaderText(fieldEl);
+      ensureHeaderFields()[field] = text;
+      container.querySelectorAll(`[data-header-field="${field}"]`).forEach(other => {
+        other.textContent = text;
+      });
+      commitHistoryInteraction();
+    });
+    fieldEl.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        fieldEl.blur();
+      }
+      e.stopPropagation();
+    });
+  });
+
   container.querySelectorAll(".ans-cell").forEach(cell => {
     const inner = cell.querySelector(".cell-inner");
     cell.addEventListener("mousedown", (e) => {
@@ -2411,6 +2474,20 @@ function escapeHtml(s) {
   })[c]);
 }
 
+function normalizeHeaderFields(header = {}) {
+  return {
+    year: String(header.year ?? ""),
+    className: String(header.className ?? header.class ?? ""),
+    number: String(header.number ?? ""),
+    name: String(header.name ?? "")
+  };
+}
+
+function ensureHeaderFields() {
+  data.header = normalizeHeaderFields(data.header);
+  return data.header;
+}
+
 function normalizeTitle(value) {
   const title = String(value || "")
     .replace(/\r/g, "")
@@ -2424,6 +2501,10 @@ function normalizeTitle(value) {
 
 function getEditableTitleText(el) {
   return (el.innerText || el.textContent || "").replace(/\u00a0/g, " ");
+}
+
+function getEditableHeaderText(el) {
+  return (el.textContent || "").replace(/\u00a0/g, " ").replace(/\r/g, "");
 }
 
 function syncTitle(value, options = {}) {
@@ -3117,6 +3198,7 @@ function importJSON() {
       recordHistory();
       data.title = loaded.title || loaded.settings?.title || data.title;
       data.questions = loaded.questions || data.questions;
+      data.header = normalizeHeaderFields(loaded.header);
       data.textboxes = loaded.textboxes || [];
       data.images = loaded.images || [];
       data.pageLayout = normalizePageLayout(loaded.pageLayout || loaded.settings?.pageLayout);
