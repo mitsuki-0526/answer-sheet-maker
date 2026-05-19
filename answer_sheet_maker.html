@@ -607,7 +607,7 @@ input:focus, select:focus {
   height: 297mm;
   background: var(--bg-paper);
   box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.10);
-  padding: 18mm 16mm;
+  padding: 18mm 10mm;
   font-family: "Hiragino Mincho ProN", "Yu Mincho", "BIZ UDPMincho", "MS Mincho", serif;
   color: #1f1f1f;
   font-size: 10pt;
@@ -678,11 +678,11 @@ input:focus, select:focus {
 }
 .sheet-body.cols-2 {
   column-count: 2;
-  column-gap: 8mm;
+  column-gap: 5mm;
 }
 .sheet-body.cols-3 {
   column-count: 3;
-  column-gap: 8mm;
+  column-gap: 5mm;
 }
 .sheet-body.has-divider {
   column-rule: 1px solid var(--line-print);
@@ -697,37 +697,37 @@ input:focus, select:focus {
 .q-header {
   background: #f3f1ed;
   border-bottom: 1px solid var(--line-print);
-  padding: 1.5mm 3mm;
+  padding: 1.5mm 2.5mm;
   font-weight: 700;
   font-size: 11pt;
 }
 .q-row {
   display: grid;
-  grid-template-columns: 10mm 1fr;
+  grid-template-columns: 8mm 1fr;
   border-bottom: 1px solid var(--line-print);
   min-height: 8mm;
 }
-.q-row.with-score { grid-template-columns: 10mm 1fr 12mm; }
+.q-row.with-score { grid-template-columns: 8mm 1fr 10mm; }
 .q-row:last-child { border-bottom: none; }
 .q-row .sub-num {
   border-right: 1px solid var(--line-print);
-  padding: 1.5mm 2mm;
+  padding: 1.5mm 1mm;
   font-size: 10pt;
 }
 .q-row-inline {
   display: grid;
   border-bottom: 1px solid var(--line-print);
 }
-.q-row-inline.cols-2 { grid-template-columns: 10mm 1fr 10mm 1fr; }
-.q-row-inline.cols-3 { grid-template-columns: 10mm 1fr 10mm 1fr 10mm 1fr; }
-.q-row-inline.cols-4 { grid-template-columns: 10mm 1fr 10mm 1fr 10mm 1fr 10mm 1fr; }
-.q-row-inline.with-score.cols-2 { grid-template-columns: 10mm 1fr 12mm 10mm 1fr 12mm; }
-.q-row-inline.with-score.cols-3 { grid-template-columns: 10mm 1fr 12mm 10mm 1fr 12mm 10mm 1fr 12mm; }
-.q-row-inline.with-score.cols-4 { grid-template-columns: 10mm 1fr 12mm 10mm 1fr 12mm 10mm 1fr 12mm 10mm 1fr 12mm; }
+.q-row-inline.cols-2 { grid-template-columns: 8mm 1fr 8mm 1fr; }
+.q-row-inline.cols-3 { grid-template-columns: 8mm 1fr 8mm 1fr 8mm 1fr; }
+.q-row-inline.cols-4 { grid-template-columns: 8mm 1fr 8mm 1fr 8mm 1fr 8mm 1fr; }
+.q-row-inline.with-score.cols-2 { grid-template-columns: 8mm 1fr 10mm 8mm 1fr 10mm; }
+.q-row-inline.with-score.cols-3 { grid-template-columns: 8mm 1fr 10mm 8mm 1fr 10mm 8mm 1fr 10mm; }
+.q-row-inline.with-score.cols-4 { grid-template-columns: 8mm 1fr 10mm 8mm 1fr 10mm 8mm 1fr 10mm 8mm 1fr 10mm; }
 .q-row-inline:last-child { border-bottom: none; }
 .q-row-inline .sub-num {
   border-right: 1px solid var(--line-print);
-  padding: 1.5mm 2mm;
+  padding: 1.5mm 1mm;
   font-size: 10pt;
 }
 .q-row-inline .ans-cell + .sub-num { border-left: 1px solid var(--line-print); }
@@ -736,13 +736,13 @@ input:focus, select:focus {
   align-items: center;
   justify-content: center;
   border-left: 1px solid var(--line-print);
-  padding: 1.5mm 1mm;
+  padding: 1.5mm 0.5mm;
   font-size: 9pt;
   color: #444;
   white-space: nowrap;
 }
 .sub-score + .sub-num { border-left: 1px solid var(--line-print); }
-.ans-cell { padding: 1.5mm 3mm; min-height: 8mm; }
+.ans-cell { padding: 1.5mm 2mm; min-height: 8mm; }
 .ans-cell.writing .cell-inner {
   background-image: linear-gradient(transparent calc(8mm - 1px), rgba(0,0,0,0.15) 1px);
   background-size: 100% 8mm;
