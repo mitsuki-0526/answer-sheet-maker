@@ -902,44 +902,21 @@ input:focus, select:focus {
   white-space: break-spaces;
 }
 .cell-inner:focus { outline: none; }
-.answer-inner {
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  min-height: 5mm;
-  box-sizing: border-box;
-  outline: none;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  white-space: break-spaces;
-  color: #d64f86;
-  display: none;
-  margin-top: 1mm;
-}
-.answer-inner:not(:empty),
-body.answer-input-mode .answer-inner {
-  display: block;
+.answer-text {
+  color: #ff00cc !important;
 }
 body.answer-input-mode .cell-inner {
-  pointer-events: none;
-}
-body.answer-input-mode .answer-inner {
-  pointer-events: auto;
-  background: rgba(214, 79, 134, 0.08);
-  outline: 1px dashed rgba(214, 79, 134, 0.5);
+  background: rgba(255, 0, 204, 0.06);
+  outline: 1px dashed rgba(255, 0, 204, 0.5);
   outline-offset: 1mm;
 }
-body:not(.answer-input-mode) .answer-inner {
-  pointer-events: none;
-}
 @media print {
-  .answer-inner {
+  .answer-text {
     display: none !important;
-    margin-top: 0;
   }
-  body.print-answers .answer-inner:not(:empty) {
-    display: block !important;
-    color: #d64f86 !important;
+  body.print-answers .answer-text {
+    display: inline !important;
+    color: #ff00cc !important;
   }
 }
 
@@ -1450,6 +1427,10 @@ body:not(.answer-input-mode) .answer-inner {
               <span class="sw"></span><span>PDF解答表示</span>
             </button>
           </div>
+          <div class="rb-row">
+            <button id="fmtColorBlack" class="rb-small" title="選択文字を黒文字にする">黒文字</button>
+            <button id="fmtColorAnswer" class="rb-small" title="選択文字を解答色にする"><span style="color:#ff00cc">解答色</span></button>
+          </div>
           <div class="rb-row" style="margin-top:auto">
             <span id="selectedInfo"><span class="dot"></span>選択中: 大問1 (2)</span>
           </div>
@@ -1867,6 +1848,7 @@ const PAPER_SIZE_MM = {
 };
 let renderedPageCount = 1;
 const HISTORY_LIMIT = 50;
+const ANSWER_COLOR = "#ff00cc";
 let undoStack = [];
 let redoStack = [];
 let activeHistorySnapshot = null;
@@ -2041,7 +2023,6 @@ function syncPageLayoutInputs() {
 function syncAnswerModeClasses() {
   document.body.classList.toggle("answer-input-mode", isToggleOn("answerInputMode"));
   document.body.classList.toggle("print-answers", isToggleOn("showAnswerText"));
-  if (selectedCell) selectedCell.editTarget = isToggleOn("answerInputMode") ? "answer" : "body";
   updateFormatBar();
 }
 
@@ -2483,14 +2464,47 @@ function getCellData(q, key) {
   return q.cells[key];
 }
 
+function mergeLegacyAnswerHtml(html, answerHtml) {
+  if (!answerHtml) return html;
+  return `${html}<span class="answer-text" style="color:${ANSWER_COLOR}">${answerHtml}</span>`;
+}
+
+function isAnswerColor(value) {
+  const v = String(value || "").replace(/\s+/g, "").toLowerCase();
+  return v === ANSWER_COLOR || v === "#f0c" || v === "rgb(255,0,204)" || v === "rgba(255,0,204,1)" || v === "magenta" || v === "fuchsia";
+}
+
+function elementHasAnswerColor(el) {
+  if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
+  return isAnswerColor(el.style?.color) || isAnswerColor(el.getAttribute?.("color"));
+}
+
+function normalizeAnswerMarkup(root) {
+  if (!root) return;
+  const walk = (node, inheritedAnswer = false) => {
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const ownAnswer = elementHasAnswerColor(node);
+    const isAnswer = inheritedAnswer || ownAnswer;
+    if (node !== root) {
+      if (isAnswer) {
+        node.classList.add("answer-text");
+        node.style.color = ANSWER_COLOR;
+        if (node.tagName === "FONT") node.setAttribute("color", ANSWER_COLOR);
+      } else {
+        node.classList.remove("answer-text");
+      }
+    }
+    Array.from(node.children).forEach(child => walk(child, isAnswer));
+  };
+  walk(root, false);
+}
+
 function renderAnswerCell(q, key, heightMm, defaultVAlign = "top") {
   const cellData = (q.cells && q.cells[key]) || {};
   const vAlignClass = cellData.vAlign ? `valign-${cellData.vAlign}` : `valign-${defaultVAlign}`;
-  const innerHtml = cellData.html || "";
-  const answerHtml = cellData.answerHtml || "";
+  const innerHtml = mergeLegacyAnswerHtml(cellData.html || "", cellData.answerHtml || "");
   return `<div class="ans-cell ${vAlignClass}" data-qid="${q.id}" data-sub="${key}" style="min-height:${heightMm}mm;">
     <div class="cell-inner" contenteditable="true">${innerHtml}</div>
-    <div class="answer-inner" contenteditable="true">${answerHtml}</div>
   </div>`;
 }
 
@@ -2702,27 +2716,26 @@ function render() {
   container.querySelectorAll(".ans-cell").forEach(cell => {
     if (cell.classList.contains("subpart-host")) return;
     const inner = cell.querySelector(".cell-inner");
-    const answerInner = cell.querySelector(".answer-inner");
     cell.addEventListener("mousedown", (e) => {
-      if (!e.target.closest(".cell-inner") && !e.target.closest(".answer-inner")) {
+      if (!e.target.closest(".cell-inner")) {
         e.preventDefault();
         doSelectCell(cell);
-        focusEditableAtStart(isToggleOn("answerInputMode") ? answerInner : inner);
+        focusEditableAtStart(inner);
+        if (isToggleOn("answerInputMode")) applyTextColor(ANSWER_COLOR, { record: false });
       }
     });
     if (inner) {
-      inner.addEventListener("focus", () => doSelectCell(cell, "body"));
+      inner.addEventListener("focus", () => {
+        doSelectCell(cell, "body");
+        if (isToggleOn("answerInputMode")) applyTextColor(ANSWER_COLOR, { record: false });
+      });
+      inner.addEventListener("beforeinput", () => {
+        if (isToggleOn("answerInputMode")) applyTextColor(ANSWER_COLOR, { record: false });
+      });
       inner.addEventListener("input", () => onCellInput(inner, "html"));
       inner.addEventListener("blur", commitHistoryInteraction);
       inner.addEventListener("keyup", updateFormatBar);
       inner.addEventListener("mouseup", updateFormatBar);
-    }
-    if (answerInner) {
-      answerInner.addEventListener("focus", () => doSelectCell(cell, "answer"));
-      answerInner.addEventListener("input", () => onCellInput(answerInner, "answerHtml"));
-      answerInner.addEventListener("blur", commitHistoryInteraction);
-      answerInner.addEventListener("keyup", updateFormatBar);
-      answerInner.addEventListener("mouseup", updateFormatBar);
     }
   });
 
@@ -2869,11 +2882,17 @@ function onCellInput(inner, field = "html") {
   const outer = inner.closest(".ans-cell");
   if (!outer) return;
   beginHistoryInteraction();
+  if (isToggleOn("answerInputMode")) {
+    document.execCommand("foreColor", false, ANSWER_COLOR);
+  }
+  normalizeAnswerMarkup(inner);
   const qId = Number(outer.dataset.qid);
   const subIdx = outer.dataset.sub;
   const q = data.questions.find(q => q.id === qId);
   if (!q) return;
-  getCellData(q, subIdx)[field] = inner.innerHTML;
+  const cellData = getCellData(q, subIdx);
+  cellData[field] = inner.innerHTML;
+  delete cellData.answerHtml;
   scheduleHistoryInteractionCommit();
 }
 
@@ -2881,9 +2900,7 @@ function onCellInput(inner, field = "html") {
 function hasActiveEditTarget() { return selectedCell || selectedTextbox; }
 
 function getActiveEditElement() {
-  if (selectedCell) {
-    return selectedCell.element.querySelector(selectedCell.editTarget === "answer" ? ".answer-inner" : ".cell-inner");
-  }
+  if (selectedCell) return selectedCell.element.querySelector(".cell-inner");
   if (selectedTextbox) {
     const tb = document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"]`);
     return tb ? tb.querySelector(".tb-content") : null;
@@ -2941,6 +2958,17 @@ function applyFontSize(size) {
   updateFormatBar();
 }
 
+function applyTextColor(color, options = {}) {
+  const target = getActiveEditElement();
+  if (!target) return;
+  if (options.record !== false) recordEditCommandHistory();
+  target.focus();
+  document.execCommand("foreColor", false, color);
+  normalizeAnswerMarkup(target);
+  saveCellState();
+  updateFormatBar();
+}
+
 function setAlign(align) {
   const target = getActiveEditElement();
   if (!target) return;
@@ -2956,7 +2984,9 @@ function setAlign(align) {
     const q = data.questions.find(q => q.id === selectedCell.qId);
     const cellData = getCellData(q, selectedCell.subIdx);
     cellData.align = align;
-    cellData[selectedCell.editTarget === "answer" ? "answerHtml" : "html"] = target.innerHTML;
+    normalizeAnswerMarkup(target);
+    cellData.html = target.innerHTML;
+    delete cellData.answerHtml;
   } else if (selectedTextbox) {
     selectedTextbox.align = align;
     selectedTextbox.html = target.innerHTML;
@@ -2987,11 +3017,13 @@ function setVAlign(vAlign) {
 function saveCellState() {
   if (selectedCell) {
     const inner = selectedCell.element.querySelector(".cell-inner");
-    const answerInner = selectedCell.element.querySelector(".answer-inner");
     const q = data.questions.find(q => q.id === selectedCell.qId);
     const cellData = getCellData(q, selectedCell.subIdx);
-    if (inner) cellData.html = inner.innerHTML;
-    if (answerInner) cellData.answerHtml = answerInner.innerHTML;
+    if (inner) {
+      normalizeAnswerMarkup(inner);
+      cellData.html = inner.innerHTML;
+      delete cellData.answerHtml;
+    }
   } else if (selectedTextbox) {
     const tb = document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"] .tb-content`);
     if (tb) selectedTextbox.html = tb.innerHTML;
@@ -3672,6 +3704,8 @@ function bindEvents() {
   bind("fmtVAlignTop", () => setVAlign("top"));
   bind("fmtVAlignMiddle", () => setVAlign("middle"));
   bind("fmtVAlignBottom", () => setVAlign("bottom"));
+  bind("fmtColorBlack", () => applyTextColor("#111111"));
+  bind("fmtColorAnswer", () => applyTextColor(ANSWER_COLOR));
   bind("fmtClear", clearCellText);
 
   // テキストボックス設定
