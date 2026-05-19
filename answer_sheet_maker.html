@@ -707,6 +707,7 @@ input:focus, select:focus {
   border-bottom: 1px solid var(--line-print);
   min-height: 8mm;
 }
+.q-row.with-score { grid-template-columns: 10mm 1fr 12mm; }
 .q-row:last-child { border-bottom: none; }
 .q-row .sub-num {
   border-right: 1px solid var(--line-print);
@@ -720,6 +721,9 @@ input:focus, select:focus {
 .q-row-inline.cols-2 { grid-template-columns: 10mm 1fr 10mm 1fr; }
 .q-row-inline.cols-3 { grid-template-columns: 10mm 1fr 10mm 1fr 10mm 1fr; }
 .q-row-inline.cols-4 { grid-template-columns: 10mm 1fr 10mm 1fr 10mm 1fr 10mm 1fr; }
+.q-row-inline.with-score.cols-2 { grid-template-columns: 10mm 1fr 12mm 10mm 1fr 12mm; }
+.q-row-inline.with-score.cols-3 { grid-template-columns: 10mm 1fr 12mm 10mm 1fr 12mm 10mm 1fr 12mm; }
+.q-row-inline.with-score.cols-4 { grid-template-columns: 10mm 1fr 12mm 10mm 1fr 12mm 10mm 1fr 12mm 10mm 1fr 12mm; }
 .q-row-inline:last-child { border-bottom: none; }
 .q-row-inline .sub-num {
   border-right: 1px solid var(--line-print);
@@ -727,6 +731,17 @@ input:focus, select:focus {
   font-size: 10pt;
 }
 .q-row-inline .ans-cell + .sub-num { border-left: 1px solid var(--line-print); }
+.sub-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid var(--line-print);
+  padding: 1.5mm 1mm;
+  font-size: 9pt;
+  color: #444;
+  white-space: nowrap;
+}
+.sub-score + .sub-num { border-left: 1px solid var(--line-print); }
 .ans-cell { padding: 1.5mm 3mm; min-height: 8mm; }
 .ans-cell.writing .cell-inner {
   background-image: linear-gradient(transparent calc(8mm - 1px), rgba(0,0,0,0.15) 1px);
@@ -2200,7 +2215,7 @@ function renderQuestionBlock(q, qNum, showSubScore, showTotalScore) {
       const vAlignClass = cellData.vAlign ? `valign-${cellData.vAlign}` : "valign-top";
       const innerHtml = cellData.html || "";
       const scoreCell = showSubScore
-        ? `<div class="sub-score">${q.subScores[i] || 0}</div>`
+        ? `<div class="sub-score">${q.subScores[i] || 0}点</div>`
         : "";
 
       html += `<div class="q-row${showSubScore ? ' with-score' : ''}">
@@ -2214,7 +2229,7 @@ function renderQuestionBlock(q, qNum, showSubScore, showTotalScore) {
   } else {
     const rows = Math.ceil(q.subCount / q.cols);
     for (let r = 0; r < rows; r++) {
-      html += `<div class="q-row-inline cols-${q.cols}">`;
+      html += `<div class="q-row-inline cols-${q.cols}${showSubScore ? ' with-score' : ''}">`;
       for (let c = 0; c < q.cols; c++) {
         const subIdx = r * q.cols + c;
         if (subIdx >= q.subCount) break;
@@ -2226,7 +2241,7 @@ function renderQuestionBlock(q, qNum, showSubScore, showTotalScore) {
             <div class="cell-inner" contenteditable="true">${innerHtml}</div>
           </div>`;
         if (showSubScore) {
-          html += `<div class="sub-score">${q.subScores[subIdx] || 0}</div>`;
+          html += `<div class="sub-score">${q.subScores[subIdx] || 0}点</div>`;
         }
       }
       html += `</div>`;
