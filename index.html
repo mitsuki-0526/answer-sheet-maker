@@ -652,19 +652,21 @@ input:focus, select:focus {
 .hdr-table {
   border-collapse: collapse;
   width: 100%;
-  max-width: 110mm;
+  max-width: 125mm;
   margin-bottom: 3mm;
+  table-layout: fixed;
 }
 .hdr-table th, .hdr-table td {
   border: 1px solid var(--line-print);
-  padding: 2mm 3mm;
-  font-size: 10pt;
+  padding: 1mm 2mm;
+  font-size: 9pt;
   font-weight: normal;
-  text-align: left;
-  height: 8mm;
+  text-align: center;
+  height: 6mm;
 }
-.hdr-table th { width: 15mm; background: transparent; }
-.hdr-table td.name { width: 50mm; }
+.hdr-table th { width: 10mm; background: transparent; }
+.hdr-table td { width: 8mm; }
+.hdr-table td.name { width: 56mm; }
 .sheet-header hr.divider {
   border: none;
   border-top: 1.5pt solid var(--line-print);
@@ -1178,8 +1180,8 @@ input:focus, select:focus {
           <div class="rb-stack">
             <button class="rb-small" title="大問を削除"><span class="ico"><svg><use href="#i-q-del"/></svg></span><span>削除</span></button>
             <button class="rb-small" title="設定タブを開く"><span class="ico"><svg><use href="#i-q-set"/></svg></span><span>設定</span></button>
-            <div class="rb-row">
-              <select class="small-select" title="解答欄の種類">
+          <div class="rb-row" style="display:none">
+            <select class="small-select" title="解答欄の種類">
                 <option>記述・計算</option>
                 <option>数値・短語句</option>
                 <option>選択</option>
@@ -1655,8 +1657,8 @@ let selectedImage = null;
 let textboxIdCounter = 1;
 let imageIdCounter = 1;
 const PAGE_LAYOUT_DEFAULTS = {
-  topMargin: 18,
-  bottomMargin: 10
+  topMargin: 6,
+  bottomMargin: 8
 };
 const PAPER_SIZE_MM = {
   A4: { width: 210, height: 297 },
@@ -1724,16 +1726,12 @@ function estimateQuestionHeight(q) {
   const marginMm = 6;
   const borderMm = 1;
   const rows = Math.ceil(q.subCount / Math.max(1, q.cols || 1));
-  const typeMinimum = q.type === "writing" ? 27
-                    : q.type === "drawing" ? 25
-                    : q.type === "proof" ? 51
-                    : 8;
-  const rowHeight = Math.max(Number(q.rowHeight) || 8, typeMinimum);
+  const rowHeight = Math.max(Number(q.rowHeight) || 8, 8);
   return headerMm + rows * rowHeight + marginMm + borderMm;
 }
 
 function getBodyCapacityMm(paper, pageLayout, showPageNum) {
-  const headerMm = 38;
+  const headerMm = 30;
   const pageNumberMm = showPageNum ? 8 : 2;
   const body = paper.height - pageLayout.topMargin - pageLayout.bottomMargin - headerMm - pageNumberMm;
   return Math.max(40, body);
@@ -1967,18 +1965,13 @@ function renderQuestionList() {
 
   data.questions.forEach((q, idx) => {
     const isActive = q.id === data.activeQuestionId;
-    const typeLabel = {
-      writing: "記述", value: "数値", choice: "選択",
-      fillin: "穴埋め", drawing: "作図", table: "表", proof: "証明"
-    }[q.type] || q.type;
-
     // 大問見出し
     const item = document.createElement("div");
     item.className = "outline-item" + (isActive ? " is-active" : "");
     item.innerHTML = `
       <span class="num">${idx + 1}</span>
       <span class="label">大問 ${idx + 1}</span>
-      <span class="meta">${typeLabel}・${q.subCount}問・${q.totalScore}点</span>
+      <span class="meta">${q.subCount}問・${q.totalScore}点</span>
     `;
     item.addEventListener("click", () => toggleQuestion(q.id));
     container.appendChild(item);
@@ -2005,18 +1998,6 @@ function renderQuestionList() {
               <label>列数</label>
               <input type="number" min="1" max="4" value="${q.cols}" data-field="cols">
             </div>
-          </div>
-          <div class="field" style="margin-bottom:10px">
-            <label>解答欄の種類</label>
-            <select data-field="type">
-              <option value="writing"${q.type==='writing'?' selected':''}>記述・計算スペース</option>
-              <option value="value"${q.type==='value'?' selected':''}>数値・短い語句</option>
-              <option value="choice"${q.type==='choice'?' selected':''}>選択</option>
-              <option value="fillin"${q.type==='fillin'?' selected':''}>穴埋め</option>
-              <option value="drawing"${q.type==='drawing'?' selected':''}>作図・グラフ</option>
-              <option value="table"${q.type==='table'?' selected':''}>表</option>
-              <option value="proof"${q.type==='proof'?' selected':''}>証明・記述</option>
-            </select>
           </div>
           <div class="slider-row">
             <div class="lbl"><span>行の高さ</span><span data-rh-label>${q.rowHeight}mm</span></div>
@@ -2208,10 +2189,7 @@ function renderQuestionBlock(q, qNum, showSubScore, showTotalScore) {
   if (q.cols === 1) {
     for (let i = 0; i < q.subCount; i++) {
       const cellData = q.cells[i] || {};
-      const ansClass = q.type === "writing" ? "writing"
-                     : q.type === "drawing" ? "drawing"
-                     : q.type === "proof" ? "proof" : "";
-      const heightStyle = q.type === "value" ? "" : `min-height:${q.rowHeight}mm;`;
+      const heightStyle = `min-height:${Math.max(Number(q.rowHeight) || 8, 8)}mm;`;
       const vAlignClass = cellData.vAlign ? `valign-${cellData.vAlign}` : "valign-top";
       const innerHtml = cellData.html || "";
       const scoreCell = showSubScore
@@ -2220,7 +2198,7 @@ function renderQuestionBlock(q, qNum, showSubScore, showTotalScore) {
 
       html += `<div class="q-row${showSubScore ? ' with-score' : ''}">
         <div class="sub-num">(${i+1})</div>
-        <div class="ans-cell ${ansClass} ${vAlignClass}" data-qid="${q.id}" data-sub="${i}" style="${heightStyle}">
+        <div class="ans-cell ${vAlignClass}" data-qid="${q.id}" data-sub="${i}" style="${heightStyle}">
           <div class="cell-inner" contenteditable="true">${innerHtml}</div>
         </div>
         ${scoreCell}
