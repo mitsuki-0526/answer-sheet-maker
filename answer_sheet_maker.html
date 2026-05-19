@@ -354,6 +354,7 @@ input:focus, select:focus {
   display: flex; align-items: center; gap: 2px;
   height: 24px;
 }
+.rb-row:has(#answerInputMode) { display: none; }
 .rb-row + .rb-row { margin-top: 2px; }
 .rb-row select { height: 22px; }
 .rb-row .font-name { width: 130px; }
@@ -904,11 +905,6 @@ input:focus, select:focus {
 .cell-inner:focus { outline: none; }
 .answer-text {
   color: #ff00cc !important;
-}
-body.answer-input-mode .cell-inner {
-  background: rgba(255, 0, 204, 0.06);
-  outline: 1px dashed rgba(255, 0, 204, 0.5);
-  outline-offset: 1mm;
 }
 @media print {
   .answer-text {
@@ -1849,6 +1845,7 @@ const PAPER_SIZE_MM = {
 let renderedPageCount = 1;
 const HISTORY_LIMIT = 50;
 const ANSWER_COLOR = "#ff00cc";
+let currentTextColor = "#111111";
 let undoStack = [];
 let redoStack = [];
 let activeHistorySnapshot = null;
@@ -2021,7 +2018,6 @@ function syncPageLayoutInputs() {
 }
 
 function syncAnswerModeClasses() {
-  document.body.classList.toggle("answer-input-mode", isToggleOn("answerInputMode"));
   document.body.classList.toggle("print-answers", isToggleOn("showAnswerText"));
   updateFormatBar();
 }
@@ -2032,7 +2028,7 @@ function setupToggle(id) {
   el.addEventListener("click", () => {
     recordHistory();
     el.classList.toggle("is-on");
-    if (id === "answerInputMode" || id === "showAnswerText") {
+    if (id === "showAnswerText") {
       syncAnswerModeClasses();
     }
     render();
@@ -2125,7 +2121,6 @@ function applySettingsSnapshot(settings) {
     if (settings[key]) sw.classList.add("is-on");
     else sw.classList.remove("is-on");
   });
-  document.getElementById("answerInputMode")?.classList.remove("is-on");
   syncAnswerModeClasses();
 }
 
@@ -2721,16 +2716,16 @@ function render() {
         e.preventDefault();
         doSelectCell(cell);
         focusEditableAtStart(inner);
-        if (isToggleOn("answerInputMode")) applyTextColor(ANSWER_COLOR, { record: false });
+        applyTextColor(currentTextColor, { record: false });
       }
     });
     if (inner) {
       inner.addEventListener("focus", () => {
         doSelectCell(cell, "body");
-        if (isToggleOn("answerInputMode")) applyTextColor(ANSWER_COLOR, { record: false });
+        applyTextColor(currentTextColor, { record: false });
       });
       inner.addEventListener("beforeinput", () => {
-        if (isToggleOn("answerInputMode")) applyTextColor(ANSWER_COLOR, { record: false });
+        applyTextColor(currentTextColor, { record: false });
       });
       inner.addEventListener("input", () => onCellInput(inner, "html"));
       inner.addEventListener("blur", commitHistoryInteraction);
@@ -2874,7 +2869,7 @@ function doSelectCell(cellOuter, editTarget = null) {
   cellOuter.classList.add("selected");
   const qId = Number(cellOuter.dataset.qid);
   const subIdx = cellOuter.dataset.sub;
-  selectedCell = { qId, subIdx, element: cellOuter, editTarget: editTarget || (isToggleOn("answerInputMode") ? "answer" : "body") };
+  selectedCell = { qId, subIdx, element: cellOuter, editTarget: editTarget || "body" };
   updateFormatBar();
 }
 
@@ -2882,9 +2877,6 @@ function onCellInput(inner, field = "html") {
   const outer = inner.closest(".ans-cell");
   if (!outer) return;
   beginHistoryInteraction();
-  if (isToggleOn("answerInputMode")) {
-    document.execCommand("foreColor", false, ANSWER_COLOR);
-  }
   normalizeAnswerMarkup(inner);
   const qId = Number(outer.dataset.qid);
   const subIdx = outer.dataset.sub;
@@ -2959,10 +2951,16 @@ function applyFontSize(size) {
 }
 
 function applyTextColor(color, options = {}) {
+  currentTextColor = color;
+  setActiveBtn("fmtColorBlack", !isAnswerColor(color));
+  setActiveBtn("fmtColorAnswer", isAnswerColor(color));
   const target = getActiveEditElement();
   if (!target) return;
   if (options.record !== false) recordEditCommandHistory();
-  target.focus();
+  const sel = window.getSelection();
+  const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
+  const selectionInTarget = range && target.contains(range.commonAncestorContainer);
+  if (!selectionInTarget) target.focus();
   document.execCommand("foreColor", false, color);
   normalizeAnswerMarkup(target);
   saveCellState();
@@ -3546,7 +3544,6 @@ function importJSON() {
           if (loaded.settings[key]) sw.classList.add("is-on");
           else sw.classList.remove("is-on");
         });
-        document.getElementById("answerInputMode")?.classList.remove("is-on");
         syncAnswerModeClasses();
       } else {
         syncTitle(data.title, { renderSheet: false });
@@ -3574,7 +3571,7 @@ function newDocument() {
   const layout = document.getElementById("layout");
   if (layout) layout.value = "縦置き 2段";
   ["centerLine","pageNum"].forEach(id => document.getElementById(id)?.classList.add("is-on"));
-  ["showSubScore","showTotalScore","answerInputMode","showAnswerText"].forEach(id => document.getElementById(id)?.classList.remove("is-on"));
+  ["showSubScore","showTotalScore","showAnswerText"].forEach(id => document.getElementById(id)?.classList.remove("is-on"));
   syncAnswerModeClasses();
   syncPageLayoutInputs();
   renderQuestionList();
@@ -3669,7 +3666,6 @@ function bindEvents() {
   setupToggle("pageNum");
   setupToggle("showSubScore");
   setupToggle("showTotalScore");
-  setupToggle("answerInputMode");
   setupToggle("showAnswerText");
 
   // 用紙設定
@@ -3706,6 +3702,7 @@ function bindEvents() {
   bind("fmtVAlignBottom", () => setVAlign("bottom"));
   bind("fmtColorBlack", () => applyTextColor("#111111"));
   bind("fmtColorAnswer", () => applyTextColor(ANSWER_COLOR));
+  applyTextColor("#111111", { record: false });
   bind("fmtClear", clearCellText);
 
   // テキストボックス設定
