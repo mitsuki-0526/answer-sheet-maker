@@ -154,6 +154,7 @@ input:focus, select:focus {
   align-items: center;
   gap: 0;
 }
+.title-right { display: none; }
 .search-box {
   display: flex; align-items: center;
   gap: 6px;
@@ -254,7 +255,7 @@ input:focus, select:focus {
   border-bottom: 1px solid var(--line-mid);
   height: var(--ribbon-body-h);
   padding: 4px 6px 0;
-  overflow-x: auto;
+  overflow: hidden;
 }
 .rb-group {
   display: flex;
@@ -533,6 +534,70 @@ input:focus, select:focus {
 .slider-row .lbl { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); }
 .slider-row input[type=range] { width: 100%; accent-color: var(--accent); }
 
+.stepper-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: end;
+  margin-bottom: 10px;
+}
+.stepper-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18px;
+}
+.stepper-input input {
+  border-radius: 2px 0 0 2px;
+}
+.stepper-buttons {
+  display: flex;
+  flex-direction: column;
+}
+.stepper-buttons button {
+  width: 18px;
+  height: 11px;
+  line-height: 10px;
+  border: 1px solid var(--line-mid);
+  border-left: none;
+  border-radius: 0;
+  background: #fff;
+  font-size: 9px;
+}
+.stepper-buttons button:first-child { border-radius: 0 2px 0 0; }
+.stepper-buttons button:last-child {
+  border-top: none;
+  border-radius: 0 0 2px 0;
+}
+.subpart-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  margin-bottom: 10px;
+}
+.subpart-table th,
+.subpart-table td {
+  border: 1px solid var(--line-light);
+  padding: 3px;
+  text-align: center;
+  font-size: 11px;
+}
+.subpart-table th {
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: #fafaf8;
+}
+.subpart-table .subpart-no { width: 38px; }
+.subpart-table input {
+  width: 52px;
+  text-align: right;
+}
+.subpart-help {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.subpart-table + .subpart-help + div {
+  display: none;
+}
+
 .btn-danger {
   width: 100%;
   height: 24px;
@@ -769,6 +834,49 @@ input:focus, select:focus {
 .ans-cell.valign-top { justify-content: flex-start; }
 .ans-cell.valign-middle { justify-content: center; }
 .ans-cell.valign-bottom { justify-content: flex-end; }
+.ans-cell.subpart-host {
+  padding: 0;
+  cursor: default;
+}
+.subpart-grid {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+}
+.subpart-grid.cols-1 { grid-template-columns: 6mm minmax(0, 1fr); }
+.subpart-grid.cols-2 { grid-template-columns: 6mm minmax(0, 1fr) 6mm minmax(0, 1fr); }
+.subpart-grid.cols-3 { grid-template-columns: 6mm minmax(0, 1fr) 6mm minmax(0, 1fr) 6mm minmax(0, 1fr); }
+.subpart-grid.cols-4 { grid-template-columns: 6mm minmax(0, 1fr) 6mm minmax(0, 1fr) 6mm minmax(0, 1fr) 6mm minmax(0, 1fr); }
+.subpart-label {
+  border-right: 1px solid var(--line-print);
+  border-bottom: 1px solid var(--line-print);
+  padding: 1mm 0.5mm;
+  font-size: 9pt;
+  text-align: center;
+}
+.subpart-grid .ans-cell {
+  border-bottom: 1px solid var(--line-print);
+  min-height: 7mm;
+}
+.subpart-grid > :nth-last-child(-n+2) {
+  border-bottom: none;
+}
+.subpart-grid.cols-2 > :nth-last-child(-n+4),
+.subpart-grid.cols-3 > :nth-last-child(-n+6),
+.subpart-grid.cols-4 > :nth-last-child(-n+8) {
+  border-bottom: none;
+}
+.subpart-grid.cols-2 .ans-cell,
+.subpart-grid.cols-3 .ans-cell,
+.subpart-grid.cols-4 .ans-cell {
+  border-right: 1px solid var(--line-print);
+}
+.subpart-grid.cols-2 > :nth-child(4n),
+.subpart-grid.cols-3 > :nth-child(6n),
+.subpart-grid.cols-4 > :nth-child(8n) {
+  border-right: none;
+}
 .ans-cell.writing .cell-inner {
   background-image: linear-gradient(transparent calc(8mm - 1px), rgba(0,0,0,0.15) 1px);
   background-size: 100% 8mm;
@@ -1491,7 +1599,7 @@ input:focus, select:focus {
               <option>証明・記述</option>
             </select>
           </div>
-          <div class="slider-row">
+          <div class="stepper-row">
             <div class="lbl"><span>行の高さ</span><span>8mm</span></div>
             <input type="range" min="6" max="20" value="8">
           </div>
@@ -1768,11 +1876,32 @@ function getPaperMetrics(orientation) {
   return { width: base.width, height: base.height };
 }
 
+function normalizeQuestionParts(q) {
+  const count = Math.max(1, Number(q.subCount) || 1);
+  const current = Array.isArray(q.parts) ? q.parts : [];
+  q.parts = Array.from({ length: count }, (_, index) => {
+    const part = current[index] || {};
+    return {
+      childCount: Math.max(0, Math.min(12, Number(part.childCount) || 0)),
+      cols: Math.max(1, Math.min(4, Number(part.cols) || 1))
+    };
+  });
+  return q.parts;
+}
+
+function getSubpartRowUnits(q) {
+  const parts = normalizeQuestionParts(q);
+  return parts.reduce((sum, part) => {
+    if (!part.childCount) return sum + 1;
+    return sum + Math.max(1, Math.ceil(part.childCount / Math.max(1, part.cols || 1)));
+  }, 0);
+}
+
 function estimateQuestionHeight(q) {
   const headerMm = 8;
   const marginMm = 6;
   const borderMm = 1;
-  const rows = Math.ceil(q.subCount / Math.max(1, q.cols || 1));
+  const rows = Math.ceil(getSubpartRowUnits(q) / Math.max(1, q.cols || 1));
   const rowHeight = Math.max(Number(q.rowHeight) || 8, 8);
   return headerMm + rows * rowHeight + marginMm + borderMm;
 }
@@ -2011,6 +2140,7 @@ function renderQuestionList() {
   container.innerHTML = "";
 
   data.questions.forEach((q, idx) => {
+    const parts = normalizeQuestionParts(q);
     const isActive = q.id === data.activeQuestionId;
     // 大問見出し
     const item = document.createElement("div");
@@ -2048,7 +2178,13 @@ function renderQuestionList() {
           </div>
           <div class="slider-row">
             <div class="lbl"><span>行の高さ</span><span data-rh-label>${q.rowHeight}mm</span></div>
-            <input type="range" min="5" max="80" value="${q.rowHeight}" data-field="rowHeight">
+            <div class="stepper-input">
+              <input type="number" min="5" max="80" step="1" value="${q.rowHeight}" data-field="rowHeight">
+              <div class="stepper-buttons">
+                <button type="button" data-step-field="rowHeight" data-step="1">▲</button>
+                <button type="button" data-step-field="rowHeight" data-step="-1">▼</button>
+              </div>
+            </div>
           </div>
           <div class="field" style="margin-bottom:10px">
             <label>大問の合計点</label>
@@ -2069,6 +2205,25 @@ function renderQuestionList() {
         </div>
 
         <div data-pane="sub" style="display:none">
+          <table class="subpart-table">
+            <thead>
+              <tr>
+                <th class="subpart-no">No.</th>
+                <th>小問数</th>
+                <th>列数</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${parts.map((part, partIndex) => `
+                <tr>
+                  <td class="subpart-no">(${partIndex + 1})</td>
+                  <td><input type="number" min="0" max="12" step="1" value="${part.childCount}" data-part-index="${partIndex}" data-part-field="childCount"></td>
+                  <td><input type="number" min="1" max="4" step="1" value="${part.cols}" data-part-index="${partIndex}" data-part-field="cols"></td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+          <div class="subpart-help">小問数を0にすると通常の解答欄として表示します。</div>
           <div style="font-size:11px;color:var(--text-secondary)">小問ごとの個別設定はフェーズ2で実装予定です。</div>
         </div>
 
@@ -2100,6 +2255,23 @@ function renderQuestionList() {
       });
 
       // 入力フィールド
+      detail.querySelectorAll("[data-part-field]").forEach(input => {
+        input.addEventListener("change", () => updateQuestionPart(q.id, input.dataset.partIndex, input.dataset.partField, input.value));
+      });
+
+      detail.querySelectorAll("[data-step-field]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const field = btn.dataset.stepField;
+          const input = detail.querySelector(`[data-field="${field}"]`);
+          if (!input) return;
+          const step = Number(btn.dataset.step) || 0;
+          const min = Number(input.min) || 0;
+          const max = Number(input.max) || 999;
+          input.value = Math.max(min, Math.min(max, (Number(input.value) || 0) + step));
+          updateQ(q.id, field, input.value);
+        });
+      });
+
       detail.querySelectorAll("[data-field]").forEach(input => {
         const handler = () => updateQ(q.id, input.dataset.field, input.value);
         if (input.type === "range") {
@@ -2188,6 +2360,7 @@ function updateQ(id, field, value, options = {}) {
     if (q.subCount === newCount) return;
     if (shouldRecord) recordHistory();
     q.subCount = newCount;
+    normalizeQuestionParts(q);
     while (q.subScores.length < newCount) q.subScores.push(5);
     q.subScores = q.subScores.slice(0, newCount);
   } else if (field === "cols" || field === "rowHeight" || field === "totalScore") {
@@ -2200,6 +2373,22 @@ function updateQ(id, field, value, options = {}) {
     if (shouldRecord) recordHistory();
     q[field] = nextValue;
   }
+  renderQuestionList();
+  render();
+}
+
+function updateQuestionPart(id, index, field, value) {
+  const q = data.questions.find(q => q.id === id);
+  if (!q) return;
+  const parts = normalizeQuestionParts(q);
+  const part = parts[Number(index)];
+  if (!part) return;
+  const min = field === "childCount" ? 0 : 1;
+  const max = field === "childCount" ? 12 : 4;
+  const nextValue = Math.max(min, Math.min(max, Number(value) || 0));
+  if (part[field] === nextValue) return;
+  recordHistory();
+  part[field] = nextValue;
   renderQuestionList();
   render();
 }
@@ -2225,8 +2414,49 @@ function deleteQuestion(id) {
   render();
 }
 
+function getCellData(q, key) {
+  if (!q.cells) q.cells = {};
+  if (!q.cells[key]) q.cells[key] = {};
+  return q.cells[key];
+}
+
+function renderAnswerCell(q, key, heightMm, defaultVAlign = "top") {
+  const cellData = (q.cells && q.cells[key]) || {};
+  const vAlignClass = cellData.vAlign ? `valign-${cellData.vAlign}` : `valign-${defaultVAlign}`;
+  const innerHtml = cellData.html || "";
+  return `<div class="ans-cell ${vAlignClass}" data-qid="${q.id}" data-sub="${key}" style="min-height:${heightMm}mm;">
+    <div class="cell-inner" contenteditable="true">${innerHtml}</div>
+  </div>`;
+}
+
+function subpartLabel(index) {
+  const kana = ["ア","イ","ウ","エ","オ","カ","キ","ク","ケ","コ","サ","シ"];
+  return kana[index] || String(index + 1);
+}
+
+function formatCellKeyLabel(key) {
+  const [major, child] = String(key).split(".");
+  const majorLabel = Number(major) + 1;
+  if (child === undefined) return majorLabel;
+  return `${majorLabel}-${subpartLabel(Number(child))}`;
+}
+
+function renderSubpartHost(q, subIdx, part, heightMm) {
+  const childCount = Math.max(0, Number(part.childCount) || 0);
+  const cols = Math.max(1, Math.min(4, Number(part.cols) || 1));
+  if (!childCount) return renderAnswerCell(q, String(subIdx), heightMm, "top");
+  let html = `<div class="ans-cell subpart-host" style="min-height:${heightMm}mm;"><div class="subpart-grid cols-${cols}">`;
+  for (let i = 0; i < childCount; i++) {
+    html += `<div class="subpart-label">${subpartLabel(i)}</div>`;
+    html += renderAnswerCell(q, `${subIdx}.${i}`, 7, "top");
+  }
+  html += `</div></div>`;
+  return html;
+}
+
 function renderQuestionBlock(q, qNum, showSubScore, showTotalScore) {
   let html = `<div class="q-block">`;
+  const parts = normalizeQuestionParts(q);
   if (showTotalScore) {
     html += `<div class="q-header" style="display:flex;justify-content:space-between;align-items:center"><span>${qNum}</span><span style="font-size:9pt;color:var(--text-secondary)">/ ${q.totalScore}点</span></div>`;
   } else {
@@ -2235,19 +2465,14 @@ function renderQuestionBlock(q, qNum, showSubScore, showTotalScore) {
 
   if (q.cols === 1) {
     for (let i = 0; i < q.subCount; i++) {
-      const cellData = q.cells[i] || {};
-      const heightStyle = `min-height:${Math.max(Number(q.rowHeight) || 8, 8)}mm;`;
-      const vAlignClass = cellData.vAlign ? `valign-${cellData.vAlign}` : "valign-top";
-      const innerHtml = cellData.html || "";
+      const rowHeight = Math.max(Number(q.rowHeight) || 8, 8);
       const scoreCell = showSubScore
         ? `<div class="sub-score">${q.subScores[i] || 0}点</div>`
         : "";
 
       html += `<div class="q-row${showSubScore ? ' with-score' : ''}">
         <div class="sub-num">(${i+1})</div>
-        <div class="ans-cell ${vAlignClass}" data-qid="${q.id}" data-sub="${i}" style="${heightStyle}">
-          <div class="cell-inner" contenteditable="true">${innerHtml}</div>
-        </div>
+        ${renderSubpartHost(q, i, parts[i], rowHeight)}
         ${scoreCell}
       </div>`;
     }
@@ -2258,13 +2483,8 @@ function renderQuestionBlock(q, qNum, showSubScore, showTotalScore) {
       for (let c = 0; c < q.cols; c++) {
         const subIdx = r * q.cols + c;
         if (subIdx >= q.subCount) break;
-        const cellData = q.cells[subIdx] || {};
-        const vAlignClass = cellData.vAlign ? `valign-${cellData.vAlign}` : "valign-middle";
-        const innerHtml = cellData.html || "";
         html += `<div class="sub-num">(${subIdx+1})</div>
-          <div class="ans-cell ${vAlignClass}" data-qid="${q.id}" data-sub="${subIdx}" style="min-height:${q.rowHeight}mm;">
-            <div class="cell-inner" contenteditable="true">${innerHtml}</div>
-          </div>`;
+          ${renderSubpartHost(q, subIdx, parts[subIdx], Math.max(Number(q.rowHeight) || 8, 8))}`;
         if (showSubScore) {
           html += `<div class="sub-score">${q.subScores[subIdx] || 0}点</div>`;
         }
@@ -2414,6 +2634,7 @@ function render() {
   });
 
   container.querySelectorAll(".ans-cell").forEach(cell => {
+    if (cell.classList.contains("subpart-host")) return;
     const inner = cell.querySelector(".cell-inner");
     cell.addEventListener("mousedown", (e) => {
       if (!e.target.closest(".cell-inner")) {
@@ -2565,7 +2786,7 @@ function doSelectCell(cellOuter) {
   document.querySelectorAll(".ans-cell.selected").forEach(c => c.classList.remove("selected"));
   cellOuter.classList.add("selected");
   const qId = Number(cellOuter.dataset.qid);
-  const subIdx = Number(cellOuter.dataset.sub);
+  const subIdx = cellOuter.dataset.sub;
   selectedCell = { qId, subIdx, element: cellOuter };
   updateFormatBar();
 }
@@ -2575,11 +2796,10 @@ function onCellInput(inner) {
   if (!outer) return;
   beginHistoryInteraction();
   const qId = Number(outer.dataset.qid);
-  const subIdx = Number(outer.dataset.sub);
+  const subIdx = outer.dataset.sub;
   const q = data.questions.find(q => q.id === qId);
   if (!q) return;
-  if (!q.cells[subIdx]) q.cells[subIdx] = {};
-  q.cells[subIdx].html = inner.innerHTML;
+  getCellData(q, subIdx).html = inner.innerHTML;
   scheduleHistoryInteractionCommit();
 }
 
@@ -2658,9 +2878,9 @@ function setAlign(align) {
   }
   if (selectedCell) {
     const q = data.questions.find(q => q.id === selectedCell.qId);
-    if (!q.cells[selectedCell.subIdx]) q.cells[selectedCell.subIdx] = {};
-    q.cells[selectedCell.subIdx].align = align;
-    q.cells[selectedCell.subIdx].html = target.innerHTML;
+    const cellData = getCellData(q, selectedCell.subIdx);
+    cellData.align = align;
+    cellData.html = target.innerHTML;
   } else if (selectedTextbox) {
     selectedTextbox.align = align;
     selectedTextbox.html = target.innerHTML;
@@ -2676,8 +2896,7 @@ function setVAlign(vAlign) {
     el.classList.remove("valign-top", "valign-middle", "valign-bottom");
     el.classList.add(`valign-${vAlign}`);
     const q = data.questions.find(q => q.id === selectedCell.qId);
-    if (!q.cells[selectedCell.subIdx]) q.cells[selectedCell.subIdx] = {};
-    q.cells[selectedCell.subIdx].vAlign = vAlign;
+    getCellData(q, selectedCell.subIdx).vAlign = vAlign;
   } else if (selectedTextbox) {
     selectedTextbox.vAlign = vAlign;
     const content = document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"] .tb-content`);
@@ -2694,8 +2913,7 @@ function saveCellState() {
     const inner = selectedCell.element.querySelector(".cell-inner");
     if (!inner) return;
     const q = data.questions.find(q => q.id === selectedCell.qId);
-    if (!q.cells[selectedCell.subIdx]) q.cells[selectedCell.subIdx] = {};
-    q.cells[selectedCell.subIdx].html = inner.innerHTML;
+    getCellData(q, selectedCell.subIdx).html = inner.innerHTML;
   } else if (selectedTextbox) {
     const tb = document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"] .tb-content`);
     if (tb) selectedTextbox.html = tb.innerHTML;
@@ -2746,7 +2964,7 @@ function updateFormatBar() {
     if (info) info.innerHTML = `<span class="dot"></span>選択中: テキストボックス #${selectedTextbox.id}`;
   } else if (selectedCell) {
     const qIdx = data.questions.findIndex(q => q.id === selectedCell.qId) + 1;
-    if (info) info.innerHTML = `<span class="dot"></span>選択中: 大問${qIdx} (${selectedCell.subIdx + 1})`;
+    if (info) info.innerHTML = `<span class="dot"></span>選択中: 大問${qIdx} (${formatCellKeyLabel(selectedCell.subIdx)})`;
   } else {
     if (info) info.innerHTML = `<span class="dot"></span>未選択`;
     setActiveBtn("fmtBold", false);
