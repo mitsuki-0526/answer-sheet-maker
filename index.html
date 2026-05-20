@@ -2954,6 +2954,8 @@ function applyTextColor(color, options = {}) {
   currentTextColor = color;
   setActiveBtn("fmtColorBlack", !isAnswerColor(color));
   setActiveBtn("fmtColorAnswer", isAnswerColor(color));
+  const swatch = document.getElementById("fmtColorSwatch");
+  if (swatch) swatch.style.background = color;
   const target = getActiveEditElement();
   if (!target) return;
   if (options.record !== false) recordEditCommandHistory();
@@ -3657,9 +3659,49 @@ function bindRibbonCommands() {
 }
 
 /* ========= イベント登録 ========= */
+function setupRibbonColorPicker() {
+  const fontColorButton = document.querySelector('button.rb-icon.split use[href="#i-fontcolor"]')?.closest("button");
+  if (!fontColorButton || fontColorButton.dataset.boundColorPicker) return;
+  fontColorButton.dataset.boundColorPicker = "true";
+  fontColorButton.id = "fmtFontColorPicker";
+  fontColorButton.title = "文字色";
+  fontColorButton.innerHTML = `
+    <span style="font-size:11px;font-weight:700;line-height:1">A</span>
+    <span id="fmtColorSwatch" style="position:absolute;left:6px;right:10px;bottom:3px;height:2px;background:#111"></span>
+    <svg class="caret"><use href="#i-caret-d"/></svg>
+  `;
+  fontColorButton.style.position = "relative";
+  const palette = document.createElement("div");
+  palette.id = "fontColorPalette";
+  palette.style.cssText = "display:none;position:absolute;z-index:1000;background:#fff;border:1px solid var(--line-mid);box-shadow:0 2px 8px rgba(0,0,0,.14);padding:4px;border-radius:3px;gap:4px;";
+  palette.innerHTML = `
+    <button type="button" data-color="#111111" title="黒文字" style="width:24px;height:24px;border:1px solid var(--line-mid);background:#fff;color:#111;font-weight:700">A</button>
+    <button type="button" data-color="${ANSWER_COLOR}" title="解答色" style="width:24px;height:24px;border:1px solid var(--line-mid);background:#fff;color:${ANSWER_COLOR};font-weight:700">A</button>
+  `;
+  document.body.appendChild(palette);
+  fontColorButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const rect = fontColorButton.getBoundingClientRect();
+    palette.style.left = `${rect.left}px`;
+    palette.style.top = `${rect.bottom + 2}px`;
+    palette.style.display = palette.style.display === "flex" ? "none" : "flex";
+  });
+  palette.querySelectorAll("[data-color]").forEach(btn => {
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      applyTextColor(btn.dataset.color);
+      palette.style.display = "none";
+    });
+  });
+  document.addEventListener("click", () => {
+    palette.style.display = "none";
+  });
+}
+
 function bindEvents() {
   bindRibbonTabs();
   bindRibbonCommands();
+  setupRibbonColorPicker();
 
   // トグル
   setupToggle("centerLine");
