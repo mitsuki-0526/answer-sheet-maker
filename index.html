@@ -46,6 +46,7 @@
   --ribbon-tabs-h: 32px;
   --ribbon-body-h: 94px;
   --status-h: 24px;
+  --nav-w: 280px;
 }
 
 * { box-sizing: border-box; }
@@ -272,6 +273,7 @@ input:focus, select:focus {
   flex: 1;
   gap: 2px;
   padding: 2px 0 0;
+  min-height: 0;
 }
 .rb-group-name {
   text-align: center;
@@ -311,7 +313,10 @@ input:focus, select:focus {
 .rb-stack {
   display: flex;
   flex-direction: column;
+  flex-wrap: wrap;
+  align-content: flex-start;
   gap: 1px;
+  max-height: 62px;
   padding-top: 2px;
 }
 .rb-small {
@@ -354,10 +359,9 @@ input:focus, select:focus {
   display: flex; align-items: center; gap: 2px;
   height: 24px;
 }
-.rb-row:has(#answerInputMode) { display: none; }
 .rb-row + .rb-row { margin-top: 2px; }
 .rb-row select { height: 22px; }
-.rb-row .font-name { width: 130px; }
+.rb-row .font-name { width: 150px; }
 .rb-row .font-size { width: 50px; }
 .rb-row .small-select { width: 88px; }
 .rb-row .mini-input {
@@ -400,6 +404,23 @@ input:focus, select:focus {
 .toggle.is-on .sw { background: var(--accent); }
 .toggle.is-on .sw::after { left: 11px; }
 
+.rb-compact-grid {
+  display: grid !important;
+  grid-template-columns: max-content max-content;
+  grid-auto-rows: 22px;
+  align-content: start;
+  column-gap: 8px !important;
+  row-gap: 2px !important;
+}
+.rb-compact-grid .rb-row {
+  height: 22px;
+  margin-top: 0 !important;
+}
+.rb-compact-grid #selectedInfo {
+  margin-left: 0;
+  max-width: 160px;
+}
+
 /* Tab panes (only one visible) */
 .ribbon-pane { display: none; flex: 1; min-width: 0; }
 .ribbon-pane.is-active { display: flex; }
@@ -414,18 +435,20 @@ input:focus, select:focus {
 /* ===== Main area ===== */
 .main {
   display: grid;
-  grid-template-columns: 280px 1fr 0;
+  grid-template-columns: var(--nav-w) 1fr 0;
   min-height: 0;
   background: var(--bg-editing);
 }
 
 /* Navigation panel (left) */
 .nav-pane {
+  position: relative;
   background: var(--bg-sidebar);
   border-right: 1px solid var(--line-mid);
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
 }
 .nav-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -460,7 +483,31 @@ input:focus, select:focus {
   color: var(--accent); border-bottom-color: var(--accent); font-weight: 600;
 }
 
-.nav-body { overflow-y: auto; padding: 8px 8px 16px; }
+.nav-body { overflow: auto; padding: 8px 8px 16px; }
+.nav-resizer {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 20;
+}
+.nav-resizer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  background: transparent;
+}
+.nav-resizer:hover::after,
+.nav-resizer.is-dragging::after { background: var(--accent); }
+body.is-resizing-nav {
+  cursor: col-resize;
+  user-select: none;
+}
 
 /* Document outline items */
 .outline-item {
@@ -500,24 +547,73 @@ input:focus, select:focus {
   border: 1px solid var(--line-mid);
   border-radius: 3px;
   background: #fff;
+  width: calc(100% - 12px);
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
 }
-.q-detail .det-tabs {
-  display: flex;
+.q-detail .det-tab-bar {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 24px;
+  align-items: stretch;
   font-size: 11px;
   margin: -10px -10px 10px;
   border-bottom: 1px solid var(--line-light);
   background: #fafaf8;
   border-radius: 3px 3px 0 0;
+  overflow: hidden;
+}
+.det-tab-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+.det-tab-scroll::-webkit-scrollbar { display: none; }
+.q-detail .det-tabs {
+  display: flex;
+  min-width: max-content;
+  font-size: 11px;
+  background: #fafaf8;
 }
 .det-tab {
-  flex: 1;
+  flex: 0 0 auto;
+  min-width: 70px;
   text-align: center;
-  padding: 6px 0;
+  padding: 7px 9px 6px;
   color: var(--text-secondary);
-  border-bottom: 2px solid transparent;
+  border: 1px solid transparent;
+  border-bottom: 3px solid transparent;
   cursor: pointer;
+  background: transparent;
+  border-radius: 4px 4px 0 0;
+  white-space: nowrap;
 }
-.det-tab.is-active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; background: #fff; }
+.det-tab:hover { color: var(--text-primary); background: #fff; }
+.det-tab.is-active {
+  color: var(--accent);
+  border-color: var(--line-mid);
+  border-bottom-color: var(--accent);
+  font-weight: 700;
+  background: #fff;
+  box-shadow: inset 0 -1px 0 var(--accent);
+}
+.det-tab-nav {
+  width: 24px;
+  border: none;
+  border-radius: 0;
+  background: #f3f1ed;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.det-tab-nav:first-child { border-right: 1px solid var(--line-light); }
+.det-tab-nav:last-child { border-left: 1px solid var(--line-light); }
+.det-tab-nav:hover { background: #fff; color: var(--text-primary); }
+.det-tab-nav svg { width: 12px; height: 12px; }
 
 .field-row {
   display: grid;
@@ -530,6 +626,16 @@ input:focus, select:focus {
 }
 .field label { font-size: 11px; color: var(--text-secondary); }
 .field input, .field select { width: 100%; }
+.check-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+.check-field input {
+  width: auto;
+}
 
 .slider-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .slider-row .lbl { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); }
@@ -570,6 +676,8 @@ input:focus, select:focus {
 }
 .subpart-table {
   width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   background: #fff;
   margin-bottom: 10px;
@@ -577,20 +685,45 @@ input:focus, select:focus {
 .subpart-table th,
 .subpart-table td {
   border: 1px solid var(--line-light);
-  padding: 3px;
+  padding: 3px 2px;
   text-align: center;
   font-size: 11px;
+  overflow: hidden;
 }
 .subpart-table th {
   font-weight: 600;
   color: var(--text-secondary);
   background: #fafaf8;
 }
-.subpart-table .subpart-no { width: 38px; }
+.subpart-table .subpart-no { width: 32px; }
 .subpart-table input {
-  width: 52px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   text-align: right;
 }
+.subpart-table select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.subpart-settings-table .subpart-no-col { width: 34px; }
+.subpart-settings-table .subpart-count-col,
+.subpart-settings-table .subpart-cols-col,
+.subpart-settings-table .subpart-ruled-col { width: 48px; }
+.subpart-settings-table .subpart-template-col { width: 84px; }
+.subpart-settings-table th,
+.subpart-settings-table td { font-size: 10.5px; }
+.subpart-settings-table th { font-size: 10px; }
+.subpart-settings-table select { font-size: 12px; }
+.subpart-settings-table input { padding-left: 2px; padding-right: 2px; }
+.manual-number-table .subpart-no-col { width: 40px; }
+.score-table .subpart-no-col { width: 40px; }
+.score-table .score-col { width: auto; }
+.layout-table .subpart-no-col { width: 40px; }
+.layout-table .layout-order-col,
+.layout-table .layout-row-col,
+.layout-table .layout-width-col { width: calc((100% - 40px) / 3); }
 .subpart-help {
   font-size: 11px;
   color: var(--text-secondary);
@@ -674,7 +807,7 @@ input:focus, select:focus {
   background: var(--bg-paper);
   box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.10);
   padding: 18mm 10mm;
-  font-family: "Hiragino Mincho ProN", "Yu Mincho", "BIZ UDPMincho", "MS Mincho", serif;
+  font-family: serif;
   color: #1f1f1f;
   font-size: 10pt;
 }
@@ -760,13 +893,30 @@ input:focus, select:focus {
 .sheet-body.cols-2 {
   column-count: 2;
   column-gap: 5mm;
+  -webkit-column-fill: auto;
+  column-fill: auto;
 }
 .sheet-body.cols-3 {
   column-count: 3;
   column-gap: 5mm;
+  -webkit-column-fill: auto;
+  column-fill: auto;
 }
 .sheet-body.has-divider {
   column-rule: 1px solid var(--line-print);
+}
+.sheet-body.has-divider.cols-2 {
+  background-image:
+    linear-gradient(to right, transparent calc(50% - 0.5px), var(--line-print) calc(50% - 0.5px), var(--line-print) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+.sheet-body.has-divider.cols-3 {
+  background-image:
+    linear-gradient(to right, transparent calc(33.333% - 0.5px), var(--line-print) calc(33.333% - 0.5px), var(--line-print) calc(33.333% + 0.5px), transparent calc(33.333% + 0.5px)),
+    linear-gradient(to right, transparent calc(66.667% - 0.5px), var(--line-print) calc(66.667% - 0.5px), var(--line-print) calc(66.667% + 0.5px), transparent calc(66.667% + 0.5px));
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
 }
 .sheet-body-inner { /* legacy */ }
 
@@ -775,12 +925,17 @@ input:focus, select:focus {
   border: 1px solid var(--line-print);
   margin-bottom: 6mm;
 }
+.q-block.q-break-before {
+  break-before: column;
+}
 .q-header {
   background: #f3f1ed;
   border-bottom: 1px solid var(--line-print);
   padding: 1.5mm 2.5mm;
   font-weight: 700;
   font-size: 11pt;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 .q-row {
   display: grid;
@@ -789,6 +944,8 @@ input:focus, select:focus {
   min-height: 8mm;
 }
 .q-row.with-score { grid-template-columns: 8mm minmax(0, 1fr) 10mm; }
+.q-row.no-sub-number { grid-template-columns: minmax(0, 1fr); }
+.q-row.no-sub-number.with-score { grid-template-columns: minmax(0, 1fr) 10mm; }
 .q-row:last-child { border-bottom: none; }
 .q-row .sub-num {
   border-right: 1px solid var(--line-print);
@@ -805,6 +962,12 @@ input:focus, select:focus {
 .q-row-inline.with-score.cols-2 { grid-template-columns: 8mm minmax(0, 1fr) 10mm 8mm minmax(0, 1fr) 10mm; }
 .q-row-inline.with-score.cols-3 { grid-template-columns: 8mm minmax(0, 1fr) 10mm 8mm minmax(0, 1fr) 10mm 8mm minmax(0, 1fr) 10mm; }
 .q-row-inline.with-score.cols-4 { grid-template-columns: 8mm minmax(0, 1fr) 10mm 8mm minmax(0, 1fr) 10mm 8mm minmax(0, 1fr) 10mm 8mm minmax(0, 1fr) 10mm; }
+.q-row-inline.no-sub-number.cols-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.q-row-inline.no-sub-number.cols-3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); }
+.q-row-inline.no-sub-number.cols-4 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); }
+.q-row-inline.no-sub-number.with-score.cols-2 { grid-template-columns: minmax(0, 1fr) 10mm minmax(0, 1fr) 10mm; }
+.q-row-inline.no-sub-number.with-score.cols-3 { grid-template-columns: minmax(0, 1fr) 10mm minmax(0, 1fr) 10mm minmax(0, 1fr) 10mm; }
+.q-row-inline.no-sub-number.with-score.cols-4 { grid-template-columns: minmax(0, 1fr) 10mm minmax(0, 1fr) 10mm minmax(0, 1fr) 10mm minmax(0, 1fr) 10mm; }
 .q-row-inline:last-child { border-bottom: none; }
 .q-row-inline .sub-num {
   border-right: 1px solid var(--line-print);
@@ -812,6 +975,27 @@ input:focus, select:focus {
   font-size: 10pt;
 }
 .q-row-inline .ans-cell + .sub-num { border-left: 1px solid var(--line-print); }
+.q-row-inline.no-sub-number .ans-cell + .ans-cell,
+.q-row-inline.no-sub-number .sub-score + .ans-cell { border-left: 1px solid var(--line-print); }
+.q-row-custom {
+  display: grid;
+  border-bottom: 1px solid var(--line-print);
+  min-height: 8mm;
+}
+.q-row-custom:last-child { border-bottom: none; }
+.q-row-custom .sub-num {
+  border-right: 1px solid var(--line-print);
+  padding: 1.5mm 1mm;
+  font-size: 10pt;
+}
+.sub-resize-handle {
+  min-width: 4px;
+  background: transparent;
+  border-left: 1px solid var(--line-print);
+  cursor: col-resize;
+}
+.sub-resize-handle:hover,
+.sub-resize-handle.is-dragging { background: rgba(0,120,212,0.16); }
 .sub-score {
   display: flex;
   align-items: center;
@@ -926,7 +1110,12 @@ input:focus, select:focus {
 
 @media print {
   @page { margin: 0; }
-  body { background: #fff; }
+  body {
+    background: #fff;
+    --line-print: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   .titlebar,
   .ribbon-tabs,
   .ribbon-body,
@@ -955,6 +1144,28 @@ input:focus, select:focus {
     margin: 0;
     break-after: page;
     page-break-after: always;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .q-header {
+    background-color: #f3f1ed !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .q-block {
+    border-color: #000 !important;
+    border-width: calc(var(--q-line-width, 1pt) + 0.25pt) !important;
+  }
+  .q-block .q-header,
+  .q-block .q-row,
+  .q-block .q-row-inline,
+  .q-block .ans-cell,
+  .q-block .sub-num,
+  .q-block .sub-score,
+  .q-block .subpart-label,
+  .q-block .subpart-host {
+    border-color: #000 !important;
+    border-width: calc(var(--q-line-width, 1pt) + 0.15pt) !important;
   }
   .sheet:last-child {
     break-after: auto;
@@ -970,7 +1181,8 @@ input:focus, select:focus {
   pointer-events: none;
 }
 .floating-textbox,
-.floating-image {
+.floating-image,
+.floating-shape {
   position: absolute;
   pointer-events: auto;
 }
@@ -978,13 +1190,14 @@ input:focus, select:focus {
   background: rgba(255,255,255,0.85);
   border: 1px dashed #555;
   padding: 2mm 3mm;
-  font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+  font-family: serif;
   font-size: 10pt;
   z-index: 2;
 }
 .floating-textbox.selected,
 .floating-textbox.is-selected,
-.floating-image.selected {
+.floating-image.selected,
+.floating-shape.selected {
   border-color: var(--accent);
   outline: 1px solid var(--accent-soft);
 }
@@ -1023,7 +1236,8 @@ input:focus, select:focus {
   z-index: 1;
 }
 .floating-textbox.selected,
-.floating-image.selected { z-index: 3; }
+.floating-image.selected,
+.floating-shape.selected { outline: 1px solid var(--accent-soft); }
 .floating-image img {
   display: block;
   width: 100%;
@@ -1031,6 +1245,87 @@ input:focus, select:focus {
   object-fit: contain;
   user-select: none;
   pointer-events: none;
+}
+.floating-shape {
+  border: 1px solid transparent;
+  background: transparent;
+}
+.floating-shape svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.floating-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 28mm;
+}
+.floating-table td {
+  border: 1px solid var(--line-print);
+  min-width: 12mm;
+  height: 7mm;
+  padding: 1mm;
+}
+.line-style-dashed { border-style: dashed !important; }
+.line-style-dotted { border-style: dotted !important; }
+.line-style-double { border-style: double !important; }
+.q-block.line-style-dashed,
+.q-block.line-style-dashed .q-header,
+.q-block.line-style-dashed .q-row,
+.q-block.line-style-dashed .q-row-inline,
+.q-block.line-style-dashed .ans-cell,
+.q-block.line-style-dashed .sub-num,
+.q-block.line-style-dashed .sub-score { border-style: dashed; }
+.q-block.line-style-dotted,
+.q-block.line-style-dotted .q-header,
+.q-block.line-style-dotted .q-row,
+.q-block.line-style-dotted .q-row-inline,
+.q-block.line-style-dotted .ans-cell,
+.q-block.line-style-dotted .sub-num,
+.q-block.line-style-dotted .sub-score { border-style: dotted; }
+.q-block.line-style-none .q-header,
+.q-block.line-style-none .q-row,
+.q-block.line-style-none .q-row-inline,
+.q-block.line-style-none .ans-cell,
+.q-block.line-style-none .sub-num,
+.q-block.line-style-none .sub-score { border-color: transparent; }
+.ans-cell.template-ruled .cell-inner {
+  background-image: var(--ruled-lines, none);
+  flex: 1 1 auto;
+  min-height: 100%;
+  height: 100%;
+}
+.ans-cell.template-grid .cell-inner {
+  background-image:
+    linear-gradient(to right, rgba(0,0,0,0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.16) 1px, transparent 1px);
+  background-size: 5mm 5mm;
+}
+.ans-cell.template-calculation .cell-inner {
+  background-image: linear-gradient(transparent calc(7mm - 1px), rgba(0,0,0,0.12) 1px);
+  background-size: 100% 7mm;
+}
+.q-block .q-header,
+.q-block .q-row,
+.q-block .q-row-inline,
+.q-block .ans-cell,
+.q-block .sub-num,
+.q-block .sub-score {
+  border-width: var(--q-line-width, 1px);
+}
+.help-panel {
+  width: 260px;
+  padding: 8px 10px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.nav-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 10px 0 6px;
 }
 
 /* ===== Status bar ===== */
@@ -1143,6 +1438,8 @@ input:focus, select:focus {
     <symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 14l4-4-4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M19 10h-9a5 5 0 1 0 0 10h3" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
     <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="currentColor" stroke-width="1.5"/></symbol>
     <symbol id="i-caret-d" viewBox="0 0 10 10"><path d="M2 4l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+    <symbol id="i-chevron-l" viewBox="0 0 10 10"><path d="M6.5 2L3.5 5l3 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-chevron-r" viewBox="0 0 10 10"><path d="M3.5 2l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 
     <!-- Clipboard -->
     <symbol id="i-paste" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="3" width="6" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8" y="11" width="8" height="6" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
@@ -1210,11 +1507,11 @@ input:focus, select:focus {
   <div class="titlebar">
     <div class="qa">
       <span class="app-mark" title="解答用紙メーカー"><svg><use href="#i-appmark"/></svg></span>
-      <button class="qa-btn" title="上書き保存"><svg><use href="#i-save"/></svg></button>
+      <button id="quickSaveBtn" class="qa-btn" title="上書き保存"><svg><use href="#i-save"/></svg></button>
       <button id="undoBtn" class="qa-btn" title="元に戻す" disabled><svg><use href="#i-undo"/></svg></button>
       <button id="redoBtn" class="qa-btn" title="やり直し" disabled><svg><use href="#i-redo"/></svg></button>
       <span class="qa-sep"></span>
-      <button class="qa-btn" title="クイックアクセス ツール バーのカスタマイズ"><svg><use href="#i-caret-d"/></svg></button>
+      <button id="fullscreenBtn" class="qa-btn" title="全画面表示"><svg><use href="#i-max"/></svg></button>
     </div>
     <div class="title-center">
       <span class="doc-name" id="docName">2学期期末テスト 数学</span>
@@ -1261,15 +1558,14 @@ input:focus, select:focus {
       <!-- ===== クリップボード ===== -->
       <div class="rb-group">
         <div class="rb-group-content">
-          <button class="rb-big" title="貼り付け">
+          <button id="clipPaste" class="rb-big" title="貼り付け">
             <span class="ico"><svg><use href="#i-paste"/></svg></span>
             <span class="lbl">貼り付け</span>
-            <svg class="caret"><use href="#i-caret-d"/></svg>
           </button>
           <div class="rb-stack">
-            <button class="rb-small" title="切り取り"><span class="ico"><svg><use href="#i-cut"/></svg></span><span>切り取り</span></button>
-            <button class="rb-small" title="コピー"><span class="ico"><svg><use href="#i-copy"/></svg></span><span>コピー</span></button>
-            <button class="rb-small" title="書式のコピー"><span class="ico"><svg><use href="#i-brush"/></svg></span><span>書式</span></button>
+            <button id="clipCut" class="rb-small" title="切り取り"><span class="ico"><svg><use href="#i-cut"/></svg></span><span>切り取り</span></button>
+            <button id="clipCopy" class="rb-small" title="コピー"><span class="ico"><svg><use href="#i-copy"/></svg></span><span>コピー</span></button>
+            <button id="clipFormat" class="rb-small" title="書式のコピー"><span class="ico"><svg><use href="#i-brush"/></svg></span><span>書式</span></button>
           </div>
         </div>
         <div class="rb-group-name">クリップボード</div>
@@ -1282,23 +1578,24 @@ input:focus, select:focus {
             <select id="fmtFontFamily" class="font-name">
               <option value="mincho">明朝</option>
               <option value="gothic">ゴシック</option>
+              <option value="monospace">等幅</option>
             </select>
             <select id="fmtFontSize" class="font-size">
               <option>8pt</option><option>9pt</option><option selected>10pt</option>
               <option>11pt</option><option>12pt</option><option>14pt</option>
               <option>16pt</option><option>18pt</option>
             </select>
-            <button class="rb-icon" title="フォントサイズ拡大"><span style="font-size:11px;font-weight:700">A⁺</span></button>
-            <button class="rb-icon" title="フォントサイズ縮小"><span style="font-size:11px;font-weight:700">A⁻</span></button>
+            <button id="fmtFontGrow" class="rb-icon" title="フォントサイズ拡大"><span style="font-size:11px;font-weight:700">A⁺</span></button>
+            <button id="fmtFontShrink" class="rb-icon" title="フォントサイズ縮小"><span style="font-size:11px;font-weight:700">A⁻</span></button>
           </div>
           <div class="rb-row">
             <button id="fmtBold" class="rb-icon" title="太字"><svg><use href="#i-bold"/></svg></button>
             <button id="fmtItalic" class="rb-icon" title="斜体"><svg><use href="#i-italic"/></svg></button>
             <button id="fmtUnderline" class="rb-icon" title="下線"><svg><use href="#i-underline"/></svg></button>
-            <button class="rb-icon" title="取り消し線"><svg><use href="#i-strike"/></svg></button>
+            <button id="fmtStrike" class="rb-icon" title="取り消し線"><svg><use href="#i-strike"/></svg></button>
             <span class="rb-sep"></span>
-            <button class="rb-icon" title="上付き"><svg><use href="#i-sup"/></svg></button>
-            <button class="rb-icon" title="下付き"><svg><use href="#i-sub"/></svg></button>
+            <button id="fmtSuperscript" class="rb-icon" title="上付き"><svg><use href="#i-sup"/></svg></button>
+            <button id="fmtSubscript" class="rb-icon" title="下付き"><svg><use href="#i-sub"/></svg></button>
             <span class="rb-sep"></span>
             <button class="rb-icon split" title="フォントの色"><svg><use href="#i-fontcolor"/></svg><svg class="caret"><use href="#i-caret-d"/></svg></button>
             <button class="rb-icon split" title="蛍光ペン"><svg><use href="#i-highlight"/></svg><svg class="caret"><use href="#i-caret-d"/></svg></button>
@@ -1335,7 +1632,7 @@ input:focus, select:focus {
           </button>
           <div class="rb-stack">
             <button class="rb-small" title="大問を削除"><span class="ico"><svg><use href="#i-q-del"/></svg></span><span>削除</span></button>
-            <button class="rb-small" title="設定タブを開く"><span class="ico"><svg><use href="#i-q-set"/></svg></span><span>設定</span></button>
+            <button class="rb-small" data-action="open-question-settings" title="設定タブを開く"><span class="ico"><svg><use href="#i-q-set"/></svg></span><span>設定</span></button>
           <div class="rb-row" style="display:none">
             <select class="small-select" title="解答欄の種類">
                 <option>記述・計算</option>
@@ -1361,8 +1658,8 @@ input:focus, select:focus {
           </button>
           <div class="rb-stack">
             <button class="rb-small" data-action="add-image" title="画像を挿入"><span class="ico"><svg><use href="#i-image"/></svg></span><span>画像</span></button>
-            <button class="rb-small" title="図形を挿入"><span class="ico"><svg><use href="#i-shape"/></svg></span><span>図形</span></button>
-            <button class="rb-small" title="表を挿入"><span class="ico"><svg><use href="#i-table"/></svg></span><span>表</span></button>
+            <button class="rb-small" data-action="add-shape" title="図形を挿入"><span class="ico"><svg><use href="#i-shape"/></svg></span><span>図形</span></button>
+            <button class="rb-small" data-action="add-table" title="表を挿入"><span class="ico"><svg><use href="#i-table"/></svg></span><span>表</span></button>
           </div>
         </div>
         <div class="rb-group-name">図形</div>
@@ -1402,7 +1699,7 @@ input:focus, select:focus {
 
       <!-- ===== 配点表示 ===== -->
       <div class="rb-group">
-        <div class="rb-group-content" style="flex-direction:column; gap:2px;">
+        <div class="rb-group-content rb-compact-grid" style="flex-direction:column; gap:2px;">
           <div class="rb-row">
             <button id="showSubScore" class="toggle" title="小問の配点 (A)">
               <span class="sw"></span><span>小問配点</span>
@@ -1411,11 +1708,6 @@ input:focus, select:focus {
           <div class="rb-row">
             <button id="showTotalScore" class="toggle" title="大問の合計 (C)">
               <span class="sw"></span><span>大問合計</span>
-            </button>
-          </div>
-          <div class="rb-row">
-            <button id="answerInputMode" class="toggle" title="解答文字入力モード">
-              <span class="sw"></span><span>解答入力</span>
             </button>
           </div>
           <div class="rb-row">
@@ -1485,9 +1777,15 @@ input:focus, select:focus {
         <div class="rb-group-content">
           <div class="rb-stack">
             <button class="rb-small" data-action="add-image" title="画像を挿入"><span class="ico"><svg><use href="#i-image"/></svg></span><span>画像</span></button>
-            <button class="rb-small" disabled title="今後追加予定"><span class="ico"><svg><use href="#i-shape"/></svg></span><span>図形</span></button>
+            <button class="rb-small" data-action="add-shape" title="図形を挿入"><span class="ico"><svg><use href="#i-shape"/></svg></span><span>図形</span></button>
             <button class="rb-small" data-action="add-image-url" title="URL画像を挿入"><span class="ico"><svg><use href="#i-link"/></svg></span><span>画像URL</span></button>
             <button class="rb-small" data-toggle-target="pageNum" title="ページ番号"><span class="ico"><svg><use href="#i-file"/></svg></span><span>ページ番号</span></button>
+            <button class="rb-small" data-action="add-table" title="表を挿入"><span class="ico"><svg><use href="#i-table"/></svg></span><span>表</span></button>
+            <button class="rb-small" data-action="bring-forward" data-requires-layer-selection title="前面へ"><span>前面</span></button>
+            <button class="rb-small" data-action="send-backward" data-requires-layer-selection title="背面へ"><span>背面</span></button>
+            <button class="rb-small" data-action="duplicate-selected" data-requires-layer-selection title="複製"><span>複製</span></button>
+            <button class="rb-small" data-action="set-shape-line-style" data-requires-shape-selection title="選択図形の線種"><span>線種</span></button>
+            <button class="rb-small" data-action="set-shape-line-width" data-requires-shape-selection title="選択図形の線幅"><span>線幅</span></button>
           </div>
         </div>
         <div class="rb-group-name">要素</div>
@@ -1544,6 +1842,7 @@ input:focus, select:focus {
           </button>
           <div class="rb-stack">
             <button class="rb-small" data-action="delete-active-question" title="選択項目を削除"><span class="ico"><svg><use href="#i-q-del"/></svg></span><span>削除</span></button>
+            <button class="rb-small" data-action="open-question-settings" title="設定タブを開く"><span class="ico"><svg><use href="#i-q-set"/></svg></span><span>設定</span></button>
           </div>
         </div>
         <div class="rb-group-name">大問</div>
@@ -1570,6 +1869,14 @@ input:focus, select:focus {
         </div>
         <div class="rb-group-name">移動</div>
       </div>
+      <div class="rb-group">
+        <div class="rb-group-content">
+          <div class="help-panel">
+            セルまたはテキストボックスを選択して、ホームタブから書式を変更できます。挿入タブでは画像、図形、表を追加し、選択後に前面/背面や複製を使えます。
+          </div>
+        </div>
+        <div class="rb-group-name">ヘルプ</div>
+      </div>
     </div>
   </div>
 
@@ -1584,9 +1891,9 @@ input:focus, select:focus {
       </div>
 
       <div class="nav-tabs">
-        <button class="nav-tab is-active">大問</button>
-        <button class="nav-tab">ヘッダー</button>
-        <button class="nav-tab">設定</button>
+        <button class="nav-tab is-active" data-nav-tab="questions">大問</button>
+        <button class="nav-tab" data-nav-tab="header">ヘッダー</button>
+        <button class="nav-tab" data-nav-tab="settings">設定</button>
       </div>
 
       <div class="nav-body" id="questionList">
@@ -1685,6 +1992,7 @@ input:focus, select:focus {
           </div>
         </div>
       </div>
+      <div class="nav-resizer" id="navResizer" title="ドラッグしてナビゲーション幅を変更"></div>
     </aside>
 
     <!-- Document canvas -->
@@ -1824,14 +2132,20 @@ let data = {
   },
   textboxes: [],
   images: [],
+  shapes: [],
   activeQuestionId: 1
 };
 
 let selectedCell = null;
 let selectedTextbox = null;
 let selectedImage = null;
+let selectedShape = null;
+let selectedHeader = null;
 let textboxIdCounter = 1;
 let imageIdCounter = 1;
+let shapeIdCounter = 1;
+const questionDetailTabs = {};
+let activeNavTab = "questions";
 const PAGE_LAYOUT_DEFAULTS = {
   topMargin: 6,
   bottomMargin: 8
@@ -1845,7 +2159,19 @@ const PAPER_SIZE_MM = {
 let renderedPageCount = 1;
 const HISTORY_LIMIT = 50;
 const ANSWER_COLOR = "#ff00cc";
+const DEFAULT_FONT_SIZE = "10pt";
+const DEFAULT_FONT_FAMILY = "mincho";
+const FONT_FAMILY_MAP = {
+  mincho: "serif",
+  gothic: "sans-serif",
+  monospace: "monospace"
+};
 let currentTextColor = "#111111";
+let currentHighlightColor = null;
+let currentFontSize = DEFAULT_FONT_SIZE;
+let currentFontFamily = DEFAULT_FONT_FAMILY;
+let lastEditRange = null;
+let pendingFormatBrush = null;
 let undoStack = [];
 let redoStack = [];
 let activeHistorySnapshot = null;
@@ -1884,6 +2210,7 @@ function createDefaultData() {
     },
     textboxes: [],
     images: [],
+    shapes: [],
     activeQuestionId: 1,
     pageLayout: normalizePageLayout()
   };
@@ -1918,6 +2245,26 @@ function normalizeQuestionParts(q) {
   return q.parts;
 }
 
+function normalizeSubLayouts(q) {
+  const count = Math.max(1, Number(q.subCount) || 1);
+  const cols = Math.max(1, Math.min(4, Number(q.cols) || 1));
+  const current = Array.isArray(q.subLayouts) ? q.subLayouts : [];
+  const rowOrderCounts = {};
+  q.subLayouts = Array.from({ length: count }, (_, index) => {
+    const item = current[index] || {};
+    const defaultRow = Math.floor(index / cols);
+    const row = Math.max(0, Math.min(count - 1, Number.isFinite(Number(item.row)) ? Number(item.row) : defaultRow));
+    const defaultOrder = rowOrderCounts[row] || 0;
+    rowOrderCounts[row] = defaultOrder + 1;
+    return {
+      row,
+      order: Math.max(0, Math.min(count - 1, Number.isFinite(Number(item.order)) ? Number(item.order) : defaultOrder)),
+      width: Math.max(0.3, Math.min(8, Number(item.width) || 1))
+    };
+  });
+  return q.subLayouts;
+}
+
 function getSubpartRowUnits(q) {
   const parts = normalizeQuestionParts(q);
   return parts.reduce((sum, part) => {
@@ -1926,11 +2273,16 @@ function getSubpartRowUnits(q) {
   }, 0);
 }
 
+function getQuestionLayoutRowCount(q) {
+  const layouts = normalizeSubLayouts(q);
+  return Math.max(1, ...layouts.map(item => item.row + 1));
+}
+
 function estimateQuestionHeight(q) {
   const headerMm = 8;
   const marginMm = 6;
   const borderMm = 1;
-  const rows = Math.ceil(getSubpartRowUnits(q) / Math.max(1, q.cols || 1));
+  const rows = getQuestionLayoutRowCount(q);
   const rowHeight = Math.max(Number(q.rowHeight) || 8, 8);
   return headerMm + rows * rowHeight + marginMm + borderMm;
 }
@@ -1951,6 +2303,18 @@ function paginateQuestions(questions, cols, pageLayout, showPageNum, paper) {
 
   questions.forEach(q => {
     const qHeight = estimateQuestionHeight(q);
+    const forceColumnBreak = q.columnBreakBefore && currentPage.length > 0 && currentColumnHeight > 0;
+    if (forceColumnBreak) {
+      if (currentColumn < cols) {
+        currentColumn += 1;
+        currentColumnHeight = 0;
+      } else {
+        pages.push(currentPage);
+        currentPage = [];
+        currentColumn = 1;
+        currentColumnHeight = 0;
+      }
+    }
     const fitsCurrent = currentColumnHeight === 0 || currentColumnHeight + qHeight <= columnCapacity;
     if (!fitsCurrent) {
       if (currentColumn < cols) {
@@ -2059,6 +2423,7 @@ function createHistorySnapshot() {
     data: clonePlain(data),
     textboxIdCounter,
     imageIdCounter,
+    shapeIdCounter,
     settings: getSettingsSnapshot()
   };
 }
@@ -2128,9 +2493,12 @@ function restoreHistorySnapshot(snapshot) {
   data = clonePlain(snapshot.data);
   textboxIdCounter = snapshot.textboxIdCounter || 1;
   imageIdCounter = snapshot.imageIdCounter || 1;
+  shapeIdCounter = snapshot.shapeIdCounter || 1;
   selectedCell = null;
   selectedTextbox = null;
   selectedImage = null;
+  selectedShape = null;
+  selectedHeader = null;
   activeHistorySnapshot = null;
   if (historyCommitTimer) {
     clearTimeout(historyCommitTimer);
@@ -2168,6 +2536,169 @@ function isEditingText(target) {
   return !!target.closest?.('[contenteditable="true"], input, textarea, select');
 }
 
+function normalizeQuestionOptions(q) {
+  const subCount = Math.max(1, Number(q.subCount) || 1);
+  q.columnBreakBefore = q.columnBreakBefore === true;
+  if (!Array.isArray(q.subScores)) q.subScores = [];
+  q.subScores = Array.from({ length: subCount }, (_, index) => Number(q.subScores[index]) || 0);
+  normalizeSubLayouts(q);
+  if (!q.numberFormat) q.numberFormat = "paren";
+  if (!q.majorNumberMode) q.majorNumberMode = "auto";
+  if (!q.subNumberMode) q.subNumberMode = "auto";
+  if (typeof q.manualMajorNumber !== "string") q.manualMajorNumber = "";
+  if (!Array.isArray(q.manualSubNumbers)) q.manualSubNumbers = [];
+  q.manualSubNumbers = Array.from({ length: subCount }, (_, index) => String(q.manualSubNumbers[index] ?? ""));
+  if (!q.lineStyle) q.lineStyle = "solid";
+  if (!q.lineWidth) q.lineWidth = "1pt";
+  if (!q.template) q.template = "plain";
+  q.ruledLineCount = Math.max(0, Math.min(20, Number(q.ruledLineCount) || 3));
+  const validTemplates = new Set(["inherit", "plain", "ruled", "calculation", "grid"]);
+  if (!Array.isArray(q.subTemplates)) q.subTemplates = [];
+  q.subTemplates = Array.from({ length: subCount }, (_, index) => {
+    const value = q.subTemplates[index] || "inherit";
+    return validTemplates.has(value) ? value : "inherit";
+  });
+  if (!Array.isArray(q.subRuledLineCounts)) q.subRuledLineCounts = [];
+  q.subRuledLineCounts = Array.from({ length: subCount }, (_, index) => {
+    const raw = q.subRuledLineCounts[index];
+    if (raw === "" || raw == null) return "";
+    return Math.max(0, Math.min(20, Number(raw) || 0));
+  });
+  return q;
+}
+
+function getSubIndexFromCellKey(key) {
+  const index = Number(String(key).split(".")[0]);
+  return Number.isInteger(index) && index >= 0 ? index : 0;
+}
+
+function getSubTemplate(q, key) {
+  normalizeQuestionOptions(q);
+  const template = q.subTemplates[getSubIndexFromCellKey(key)];
+  return template && template !== "inherit" ? template : "plain";
+}
+
+function getSubRuledLineCount(q, key) {
+  normalizeQuestionOptions(q);
+  const raw = q.subRuledLineCounts[getSubIndexFromCellKey(key)];
+  return raw === "" || raw == null ? q.ruledLineCount : raw;
+}
+
+function formatSubNumber(index, format = "paren") {
+  const n = Number(index) + 1;
+  const circled = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫","⑬","⑭","⑮","⑯","⑰","⑱","⑲","⑳"];
+  const kana = ["ア","イ","ウ","エ","オ","カ","キ","ク","ケ","コ","サ","シ","ス","セ","ソ","タ","チ","ツ","テ","ト"];
+  if (format === "circled") return circled[index] || String(n);
+  if (format === "kana") return kana[index] || String(n);
+  return `(${n})`;
+}
+
+function formatMajorNumber(q, qNum) {
+  normalizeQuestionOptions(q);
+  if (q.majorNumberMode === "none") return "";
+  if (q.majorNumberMode === "manual") return q.manualMajorNumber.trim() || String(qNum);
+  return String(qNum);
+}
+
+function formatQuestionSubNumber(q, index) {
+  normalizeQuestionOptions(q);
+  if (q.subNumberMode === "none") return "";
+  if (q.subNumberMode === "manual") return q.manualSubNumbers[index]?.trim() || formatSubNumber(index, q.numberFormat);
+  return formatSubNumber(index, q.numberFormat);
+}
+
+function getVisualSubOrder(q) {
+  normalizeQuestionOptions(q);
+  return q.subLayouts
+    .map((layout, subIdx) => ({ subIdx, layout }))
+    .sort((a, b) => (a.layout.row - b.layout.row) || (a.layout.order - b.layout.order) || (a.subIdx - b.subIdx));
+}
+
+function getVisualSubNumberMap(q) {
+  const map = new Map();
+  getVisualSubOrder(q).forEach((item, visualIndex) => {
+    map.set(item.subIdx, visualIndex);
+  });
+  return map;
+}
+
+function formatVisualQuestionSubNumber(q, subIdx, visualNumberMap = getVisualSubNumberMap(q)) {
+  const visualIndex = visualNumberMap.get(subIdx) ?? subIdx;
+  if (q.subNumberMode === "manual") return formatQuestionSubNumber(q, subIdx);
+  return formatQuestionSubNumber(q, visualIndex);
+}
+
+function getQuestionLineStyle(q) {
+  normalizeQuestionOptions(q);
+  const widthMap = { "0.5pt": "0.5pt", "1pt": "1pt", "1.5pt": "1.5pt", "2pt": "2pt" };
+  return `--q-line-width:${widthMap[q.lineWidth] || "1pt"};border-width:${widthMap[q.lineWidth] || "1pt"}`;
+}
+
+function renderHeaderSettings(container) {
+  const header = ensureHeaderFields();
+  container.innerHTML = `
+    <div class="nav-section-title">ヘッダー</div>
+    <div class="field"><label>タイトル</label><input id="navTitle" type="text" value="${escapeHtml(data.title || "")}"></div>
+    <div class="field-row">
+      <div class="field"><label>年</label><input type="text" data-header-input="year" value="${escapeHtml(header.year)}"></div>
+      <div class="field"><label>組</label><input type="text" data-header-input="className" value="${escapeHtml(header.className)}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>番号</label><input type="text" data-header-input="number" value="${escapeHtml(header.number)}"></div>
+      <div class="field"><label>氏名</label><input type="text" data-header-input="name" value="${escapeHtml(header.name)}"></div>
+    </div>
+  `;
+  const titleInput = container.querySelector("#navTitle");
+  titleInput?.addEventListener("change", () => {
+    recordHistory();
+    syncTitle(titleInput.value, { renderSheet: true });
+  });
+  container.querySelectorAll("[data-header-input]").forEach(input => {
+    input.addEventListener("change", () => {
+      recordHistory();
+      ensureHeaderFields()[input.dataset.headerInput] = input.value;
+      render();
+    });
+  });
+}
+
+function renderPageSettings(container) {
+  const pageLayout = ensurePageLayout();
+  container.innerHTML = `
+    <div class="nav-section-title">用紙と表示</div>
+    <div class="field-row">
+      <div class="field"><label>用紙</label><select id="navPaperSize"><option>A4</option><option>B5</option><option>B4</option><option>A3</option></select></div>
+      <div class="field"><label>段組</label><select id="navLayout"><option>縦置き 1段</option><option>縦置き 2段</option><option>横置き 1段</option><option>横置き 2段</option><option>横置き 3段</option></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>上余白(mm)</label><input id="topMargin" type="number" min="6" max="70" value="${pageLayout.topMargin}"></div>
+      <div class="field"><label>下余白(mm)</label><input id="bottomMargin" type="number" min="8" max="40" value="${pageLayout.bottomMargin}"></div>
+    </div>
+    <div class="rb-row">
+      <button class="rb-small" data-toggle-target="centerLine">中央線</button>
+      <button class="rb-small" data-toggle-target="pageNum">ページ番号</button>
+      <button class="rb-small" data-toggle-target="showSubScore">小問配点</button>
+      <button class="rb-small" data-toggle-target="showTotalScore">大問合計</button>
+    </div>
+  `;
+  const ps = container.querySelector("#navPaperSize");
+  const lo = container.querySelector("#navLayout");
+  if (ps) {
+    ps.value = document.getElementById("paperSize")?.value || "A4";
+    ps.addEventListener("change", () => setPaperSize(ps.value));
+  }
+  if (lo) {
+    lo.value = document.getElementById("layout")?.value || "縦置き 2段";
+    lo.addEventListener("change", () => setPaperLayout(lo.value));
+  }
+  container.querySelectorAll("#topMargin,#bottomMargin").forEach(input => {
+    input.addEventListener("change", () => setPageLayoutField(input.id, input.value));
+  });
+  container.querySelectorAll("[data-toggle-target]").forEach(btn => {
+    btn.addEventListener("click", () => document.getElementById(btn.dataset.toggleTarget)?.click());
+  });
+}
+
 /* ========= 大問リスト（左ナビ） ========= */
 function renderQuestionList() {
   const container = document.getElementById("questionList");
@@ -2178,7 +2709,26 @@ function renderQuestionList() {
   const tbSettings = document.getElementById("textboxSettings");
   container.innerHTML = "";
 
+  document.querySelectorAll(".nav-tab[data-nav-tab]").forEach(tab => {
+    tab.classList.toggle("is-active", tab.dataset.navTab === activeNavTab);
+  });
+
+  if (activeNavTab === "header") {
+    renderHeaderSettings(container);
+    if (tbSettings) container.appendChild(tbSettings);
+    updateStatusBar();
+    return;
+  }
+
+  if (activeNavTab === "settings") {
+    renderPageSettings(container);
+    if (tbSettings) container.appendChild(tbSettings);
+    updateStatusBar();
+    return;
+  }
+
   data.questions.forEach((q, idx) => {
+    normalizeQuestionOptions(q);
     const parts = normalizeQuestionParts(q);
     const isActive = q.id === data.activeQuestionId;
     // 大問見出し
@@ -2194,17 +2744,27 @@ function renderQuestionList() {
 
     // 展開時の詳細パネル
     if (isActive) {
+      const activeDetailTab = questionDetailTabs[q.id] || "count";
+      const visualSubNumberMap = getVisualSubNumberMap(q);
+      const visualSubOrder = getVisualSubOrder(q);
       const detail = document.createElement("div");
       detail.className = "q-detail";
       detail.innerHTML = `
-        <div class="det-tabs">
-          <button class="det-tab is-active" data-tab="count">問題数</button>
-          <button class="det-tab" data-tab="num">問題番号</button>
-          <button class="det-tab" data-tab="sub">小問</button>
-          <button class="det-tab" data-tab="line">線種</button>
+        <div class="det-tab-bar">
+          <button type="button" class="det-tab-nav" data-det-tab-scroll="-1" title="左へ"><svg><use href="#i-chevron-l"/></svg></button>
+          <div class="det-tab-scroll">
+            <div class="det-tabs">
+              <button class="det-tab ${activeDetailTab === "count" ? "is-active" : ""}" data-tab="count">問題数</button>
+              <button class="det-tab ${activeDetailTab === "num" ? "is-active" : ""}" data-tab="num">問題番号</button>
+              <button class="det-tab ${activeDetailTab === "sub" ? "is-active" : ""}" data-tab="sub">小問</button>
+              <button class="det-tab ${activeDetailTab === "score" ? "is-active" : ""}" data-tab="score">配点</button>
+              <button class="det-tab ${activeDetailTab === "line" ? "is-active" : ""}" data-tab="line">線種</button>
+            </div>
+          </div>
+          <button type="button" class="det-tab-nav" data-det-tab-scroll="1" title="右へ"><svg><use href="#i-chevron-r"/></svg></button>
         </div>
 
-        <div data-pane="count">
+        <div data-pane="count" style="${activeDetailTab === "count" ? "" : "display:none"}">
           <div class="field-row">
             <div class="field">
               <label>小問数</label>
@@ -2229,52 +2789,184 @@ function renderQuestionList() {
             <label>大問の合計点</label>
             <input type="number" value="${q.totalScore}" data-field="totalScore">
           </div>
+          <label class="check-field" style="margin-bottom:10px">
+            <input type="checkbox" data-field="columnBreakBefore" ${q.columnBreakBefore ? "checked" : ""}>
+            <span>この大問の前で段を変える</span>
+          </label>
           <button class="btn-danger" data-action="delete">この大問を削除</button>
         </div>
 
-        <div data-pane="num" style="display:none">
+        <div data-pane="num" style="${activeDetailTab === "num" ? "" : "display:none"}">
           <div class="field">
-            <label>番号形式</label>
-            <select>
-              <option>(1), (2), (3)…</option>
-              <option>①, ②, ③…</option>
-              <option>ア, イ, ウ…</option>
+            <label>大問番号</label>
+            <select data-field="majorNumberMode">
+              <option value="auto" ${q.majorNumberMode === "auto" ? "selected" : ""}>自動（1, 2, 3…）</option>
+              <option value="manual" ${q.majorNumberMode === "manual" ? "selected" : ""}>手入力</option>
+              <option value="none" ${q.majorNumberMode === "none" ? "selected" : ""}>番号なし</option>
             </select>
+          </div>
+          <div class="field" style="${q.majorNumberMode === "manual" ? "" : "display:none"}">
+            <label>大問番号の表示</label>
+            <input type="text" value="${escapeHtml(q.manualMajorNumber)}" data-field="manualMajorNumber" placeholder="例: I / 第1問 / A">
+          </div>
+          <div class="field">
+            <label>小問番号</label>
+            <select data-field="subNumberMode">
+              <option value="auto" ${q.subNumberMode === "auto" ? "selected" : ""}>自動</option>
+              <option value="manual" ${q.subNumberMode === "manual" ? "selected" : ""}>手入力</option>
+              <option value="none" ${q.subNumberMode === "none" ? "selected" : ""}>番号なし</option>
+            </select>
+          </div>
+          <div class="field" style="${q.subNumberMode === "auto" ? "" : "display:none"}">
+            <label>小問の自動形式</label>
+            <select data-field="numberFormat">
+              <option value="paren" ${q.numberFormat === "paren" ? "selected" : ""}>(1), (2), (3)…</option>
+              <option value="circled" ${q.numberFormat === "circled" ? "selected" : ""}>①, ②, ③…</option>
+              <option value="kana" ${q.numberFormat === "kana" ? "selected" : ""}>ア, イ, ウ…</option>
+            </select>
+          </div>
+          <div style="${q.subNumberMode === "manual" ? "" : "display:none"}">
+            <table class="subpart-table manual-number-table">
+              <colgroup>
+                <col class="subpart-no-col">
+                <col>
+              </colgroup>
+              <thead>
+                <tr>
+                  <th class="subpart-no">No.</th>
+                  <th>表示する番号</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${q.manualSubNumbers.map((label, subIndex) => `
+                  <tr>
+                    <td class="subpart-no">${subIndex + 1}</td>
+                    <td><input type="text" value="${escapeHtml(label)}" data-sub-number-index="${subIndex}" placeholder="${escapeHtml(formatSubNumber(subIndex, q.numberFormat))}"></td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+            <div class="subpart-help">空欄の小問は現在の自動形式で表示します。</div>
           </div>
         </div>
 
-        <div data-pane="sub" style="display:none">
-          <table class="subpart-table">
+        <div data-pane="sub" style="${activeDetailTab === "sub" ? "" : "display:none"}">
+          <table class="subpart-table layout-table">
+            <colgroup>
+              <col class="subpart-no-col">
+              <col class="layout-row-col">
+              <col class="layout-order-col">
+              <col class="layout-width-col">
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="subpart-no">No.</th>
+                <th>行</th>
+                <th>位置</th>
+                <th>幅</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${visualSubOrder.map(({ subIdx: subIndex, layout }) => `
+                <tr>
+                  <td class="subpart-no">${escapeHtml(formatVisualQuestionSubNumber(q, subIndex, visualSubNumberMap) || String(subIndex + 1))}</td>
+                  <td><input type="number" min="1" max="${q.subCount}" step="1" value="${layout.row + 1}" data-sub-layout-index="${subIndex}" data-sub-layout-field="row"></td>
+                  <td><input type="number" min="1" max="${q.subCount}" step="1" value="${layout.order + 1}" data-sub-layout-index="${subIndex}" data-sub-layout-field="order"></td>
+                  <td><input type="number" min="0.3" max="8" step="0.1" value="${layout.width}" data-sub-layout-index="${subIndex}" data-sub-layout-field="width"></td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+          <div class="subpart-help" style="margin-bottom:10px">同じ行番号の小問は横並びになり、位置が小さいものから左に並びます。プレビュー上の境目をドラッグして幅も調整できます。</div>
+
+          <table class="subpart-table subpart-settings-table">
+            <colgroup>
+              <col class="subpart-no-col">
+              <col class="subpart-count-col">
+              <col class="subpart-cols-col">
+              <col class="subpart-template-col">
+              <col class="subpart-ruled-col">
+            </colgroup>
             <thead>
               <tr>
                 <th class="subpart-no">No.</th>
                 <th>小問数</th>
                 <th>列数</th>
+                <th>形式</th>
+                <th>罫線</th>
               </tr>
             </thead>
             <tbody>
-              ${parts.map((part, partIndex) => `
+              ${visualSubOrder.map(({ subIdx: partIndex }) => {
+                const part = parts[partIndex];
+                return `
                 <tr>
-                  <td class="subpart-no">(${partIndex + 1})</td>
+                  <td class="subpart-no">${escapeHtml(formatVisualQuestionSubNumber(q, partIndex, visualSubNumberMap) || String(partIndex + 1))}</td>
                   <td><input type="number" min="0" max="12" step="1" value="${part.childCount}" data-part-index="${partIndex}" data-part-field="childCount"></td>
                   <td><input type="number" min="1" max="4" step="1" value="${part.cols}" data-part-index="${partIndex}" data-part-field="cols"></td>
+                  <td>
+                    <select data-sub-template-index="${partIndex}">
+                      <option value="inherit" ${q.subTemplates[partIndex] === "inherit" ? "selected" : ""}>標準</option>
+                      <option value="plain" ${q.subTemplates[partIndex] === "plain" ? "selected" : ""}>四角</option>
+                      <option value="ruled" ${q.subTemplates[partIndex] === "ruled" ? "selected" : ""}>罫線</option>
+                      <option value="calculation" ${q.subTemplates[partIndex] === "calculation" ? "selected" : ""}>計算</option>
+                      <option value="grid" ${q.subTemplates[partIndex] === "grid" ? "selected" : ""}>方眼</option>
+                    </select>
+                  </td>
+                  <td><input type="number" min="0" max="20" step="1" value="${q.subRuledLineCounts[partIndex] === "" ? q.ruledLineCount : q.subRuledLineCounts[partIndex]}" data-sub-ruled-index="${partIndex}"></td>
                 </tr>
-              `).join("")}
+              `}).join("")}
             </tbody>
           </table>
           <div class="subpart-help">小問数を0にすると通常の解答欄として表示します。</div>
-          <div style="font-size:11px;color:var(--text-secondary)">小問ごとの個別設定はフェーズ2で実装予定です。</div>
+          <div style="font-size:11px;color:var(--text-secondary)">小問ごとの分割数と列数を調整できます。</div>
         </div>
 
-        <div data-pane="line" style="display:none">
+        <div data-pane="score" style="${activeDetailTab === "score" ? "" : "display:none"}">
+          <table class="subpart-table score-table">
+            <colgroup>
+              <col class="subpart-no-col">
+              <col class="score-col">
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="subpart-no">No.</th>
+                <th>配点</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${visualSubOrder.map(({ subIdx: subIndex }) => {
+                const score = q.subScores[subIndex];
+                return `
+                <tr>
+                  <td class="subpart-no">${escapeHtml(formatVisualQuestionSubNumber(q, subIndex, visualSubNumberMap) || String(subIndex + 1))}</td>
+                  <td><input type="number" min="0" step="1" value="${Number(score) || 0}" data-sub-score-index="${subIndex}"></td>
+                </tr>
+              `}).join("")}
+            </tbody>
+          </table>
+          <div class="subpart-help">変更すると大問の合計点も自動で更新します。</div>
+        </div>
+
+        <div data-pane="line" style="${activeDetailTab === "line" ? "" : "display:none"}">
           <div class="field-row">
             <div class="field">
               <label>外枠</label>
-              <select><option>実線（太）</option><option>実線（細）</option></select>
+              <select data-field="lineWidth">
+                <option value="0.5pt" ${q.lineWidth === "0.5pt" ? "selected" : ""}>細</option>
+                <option value="1pt" ${q.lineWidth === "1pt" ? "selected" : ""}>標準</option>
+                <option value="1.5pt" ${q.lineWidth === "1.5pt" ? "selected" : ""}>太</option>
+                <option value="2pt" ${q.lineWidth === "2pt" ? "selected" : ""}>極太</option>
+              </select>
             </div>
             <div class="field">
               <label>区切り線</label>
-              <select><option>実線</option><option>破線</option><option>なし</option></select>
+              <select data-field="lineStyle">
+                <option value="solid" ${q.lineStyle === "solid" ? "selected" : ""}>実線</option>
+                <option value="dashed" ${q.lineStyle === "dashed" ? "selected" : ""}>破線</option>
+                <option value="dotted" ${q.lineStyle === "dotted" ? "selected" : ""}>点線</option>
+                <option value="none" ${q.lineStyle === "none" ? "selected" : ""}>なし</option>
+              </select>
             </div>
           </div>
         </div>
@@ -2282,20 +2974,66 @@ function renderQuestionList() {
       container.appendChild(detail);
 
       // タブ切替
+      const detailTabs = Array.from(detail.querySelectorAll(".det-tab"));
+      const detailTabScroller = detail.querySelector(".det-tab-scroll");
+      const activateDetailTab = (tab, options = {}) => {
+        if (!tab) return;
+        questionDetailTabs[q.id] = tab.dataset.tab;
+        detailTabs.forEach(t => t.classList.remove("is-active"));
+        tab.classList.add("is-active");
+        detail.querySelectorAll("[data-pane]").forEach(p => p.style.display = "none");
+        const pane = detail.querySelector(`[data-pane="${tab.dataset.tab}"]`);
+        if (pane) pane.style.display = "";
+        if (options.reveal) {
+          tab.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+        }
+      };
+      detail.querySelectorAll("[data-det-tab-scroll]").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          detailTabScroller?.scrollBy({ left: Number(btn.dataset.detTabScroll) * 90, behavior: "smooth" });
+        });
+      });
       detail.querySelectorAll(".det-tab").forEach(tab => {
         tab.addEventListener("click", (e) => {
           e.stopPropagation();
-          detail.querySelectorAll(".det-tab").forEach(t => t.classList.remove("is-active"));
-          tab.classList.add("is-active");
-          detail.querySelectorAll("[data-pane]").forEach(p => p.style.display = "none");
-          const pane = detail.querySelector(`[data-pane="${tab.dataset.tab}"]`);
-          if (pane) pane.style.display = "";
+          activateDetailTab(tab, { reveal: true });
+        });
+        tab.addEventListener("keydown", (e) => {
+          if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+          e.preventDefault();
+          const currentIndex = detailTabs.indexOf(tab);
+          const nextIndex = e.key === "ArrowRight"
+            ? Math.min(detailTabs.length - 1, currentIndex + 1)
+            : Math.max(0, currentIndex - 1);
+          detailTabs[nextIndex]?.focus();
+          activateDetailTab(detailTabs[nextIndex], { reveal: true });
         });
       });
 
       // 入力フィールド
       detail.querySelectorAll("[data-part-field]").forEach(input => {
         input.addEventListener("change", () => updateQuestionPart(q.id, input.dataset.partIndex, input.dataset.partField, input.value));
+      });
+
+      detail.querySelectorAll("[data-sub-template-index]").forEach(input => {
+        input.addEventListener("change", () => updateSubTemplate(q.id, input.dataset.subTemplateIndex, input.value));
+      });
+
+      detail.querySelectorAll("[data-sub-ruled-index]").forEach(input => {
+        input.addEventListener("change", () => updateSubRuledLineCount(q.id, input.dataset.subRuledIndex, input.value));
+      });
+
+      detail.querySelectorAll("[data-sub-number-index]").forEach(input => {
+        input.addEventListener("change", () => updateManualSubNumber(q.id, input.dataset.subNumberIndex, input.value));
+      });
+
+      detail.querySelectorAll("[data-sub-score-index]").forEach(input => {
+        input.addEventListener("change", () => updateSubScore(q.id, input.dataset.subScoreIndex, input.value));
+      });
+
+      detail.querySelectorAll("[data-sub-layout-field]").forEach(input => {
+        input.addEventListener("change", () => updateSubLayout(q.id, input.dataset.subLayoutIndex, input.dataset.subLayoutField, input.value));
       });
 
       detail.querySelectorAll("[data-step-field]").forEach(btn => {
@@ -2312,7 +3050,7 @@ function renderQuestionList() {
       });
 
       detail.querySelectorAll("[data-field]").forEach(input => {
-        const handler = () => updateQ(q.id, input.dataset.field, input.value);
+        const handler = () => updateQ(q.id, input.dataset.field, input.type === "checkbox" ? input.checked : input.value);
         if (input.type === "range") {
           input.addEventListener("pointerdown", beginHistoryInteraction);
           input.addEventListener("focus", beginHistoryInteraction);
@@ -2400,18 +3138,106 @@ function updateQ(id, field, value, options = {}) {
     if (shouldRecord) recordHistory();
     q.subCount = newCount;
     normalizeQuestionParts(q);
+    normalizeQuestionOptions(q);
     while (q.subScores.length < newCount) q.subScores.push(5);
     q.subScores = q.subScores.slice(0, newCount);
-  } else if (field === "cols" || field === "rowHeight" || field === "totalScore") {
+  } else if (field === "cols" || field === "rowHeight" || field === "totalScore" || field === "ruledLineCount") {
     nextValue = Number(value);
+    if (field === "ruledLineCount") nextValue = Math.max(0, Math.min(20, nextValue || 0));
     if (q[field] === nextValue) return;
     if (shouldRecord) recordHistory();
     q[field] = nextValue;
+    if (field === "cols") {
+      q.subLayouts = [];
+      normalizeQuestionOptions(q);
+    }
   } else {
     if (q[field] === nextValue) return;
     if (shouldRecord) recordHistory();
     q[field] = nextValue;
   }
+  renderQuestionList();
+  render();
+}
+
+function updateManualSubNumber(id, index, value) {
+  const q = data.questions.find(q => q.id === id);
+  if (!q) return;
+  normalizeQuestionOptions(q);
+  const subIndex = Number(index);
+  if (!Number.isInteger(subIndex) || subIndex < 0 || subIndex >= q.manualSubNumbers.length) return;
+  const nextValue = String(value);
+  if (q.manualSubNumbers[subIndex] === nextValue) return;
+  recordHistory();
+  q.manualSubNumbers[subIndex] = nextValue;
+  renderQuestionList();
+  render();
+}
+
+function updateSubTemplate(id, index, value) {
+  const q = data.questions.find(q => q.id === id);
+  if (!q) return;
+  normalizeQuestionOptions(q);
+  const subIndex = Number(index);
+  const validTemplates = new Set(["inherit", "plain", "ruled", "calculation", "grid"]);
+  if (!Number.isInteger(subIndex) || subIndex < 0 || subIndex >= q.subTemplates.length) return;
+  const nextValue = validTemplates.has(value) ? value : "inherit";
+  if (q.subTemplates[subIndex] === nextValue) return;
+  recordHistory();
+  q.subTemplates[subIndex] = nextValue;
+  renderQuestionList();
+  render();
+}
+
+function updateSubRuledLineCount(id, index, value) {
+  const q = data.questions.find(q => q.id === id);
+  if (!q) return;
+  normalizeQuestionOptions(q);
+  const subIndex = Number(index);
+  if (!Number.isInteger(subIndex) || subIndex < 0 || subIndex >= q.subRuledLineCounts.length) return;
+  const nextValue = Math.max(0, Math.min(20, Number(value) || 0));
+  if (q.subRuledLineCounts[subIndex] === nextValue) return;
+  recordHistory();
+  q.subRuledLineCounts[subIndex] = nextValue;
+  renderQuestionList();
+  render();
+}
+
+function updateSubScore(id, index, value) {
+  const q = data.questions.find(q => q.id === id);
+  if (!q) return;
+  normalizeQuestionOptions(q);
+  const subIndex = Number(index);
+  if (!Number.isInteger(subIndex) || subIndex < 0 || subIndex >= q.subScores.length) return;
+  const nextValue = Math.max(0, Number(value) || 0);
+  if (q.subScores[subIndex] === nextValue) return;
+  recordHistory();
+  q.subScores[subIndex] = nextValue;
+  q.totalScore = q.subScores.reduce((sum, score) => sum + (Number(score) || 0), 0);
+  renderQuestionList();
+  render();
+}
+
+function updateSubLayout(id, index, field, value) {
+  const q = data.questions.find(q => q.id === id);
+  if (!q) return;
+  normalizeQuestionOptions(q);
+  const subIndex = Number(index);
+  if (!Number.isInteger(subIndex) || subIndex < 0 || subIndex >= q.subLayouts.length) return;
+  let nextValue;
+  const maxIndex = Math.max(0, q.subLayouts.length - 1);
+  if (field === "row") {
+    nextValue = Math.max(0, Math.min(maxIndex, (Number(value) || 1) - 1));
+  } else if (field === "order") {
+    nextValue = Math.max(0, Math.min(maxIndex, (Number(value) || 1) - 1));
+  } else if (field === "width") {
+    nextValue = Math.max(0.3, Math.min(8, Number(value) || 1));
+  } else {
+    return;
+  }
+  if (q.subLayouts[subIndex][field] === nextValue) return;
+  recordHistory();
+  q.subLayouts[subIndex][field] = nextValue;
   renderQuestionList();
   render();
 }
@@ -2464,6 +3290,10 @@ function mergeLegacyAnswerHtml(html, answerHtml) {
   return `${html}<span class="answer-text" style="color:${ANSWER_COLOR}">${answerHtml}</span>`;
 }
 
+function getFontFamilyStyle(value) {
+  return FONT_FAMILY_MAP[value] || FONT_FAMILY_MAP[DEFAULT_FONT_FAMILY];
+}
+
 function isAnswerColor(value) {
   const v = String(value || "").replace(/\s+/g, "").toLowerCase();
   return v === ANSWER_COLOR || v === "#f0c" || v === "rgb(255,0,204)" || v === "rgba(255,0,204,1)" || v === "magenta" || v === "fuchsia";
@@ -2496,11 +3326,26 @@ function normalizeAnswerMarkup(root) {
 
 function renderAnswerCell(q, key, heightMm, defaultVAlign = "top") {
   const cellData = (q.cells && q.cells[key]) || {};
+  const template = getSubTemplate(q, key);
   const vAlignClass = cellData.vAlign ? `valign-${cellData.vAlign}` : `valign-${defaultVAlign}`;
   const innerHtml = mergeLegacyAnswerHtml(cellData.html || "", cellData.answerHtml || "");
-  return `<div class="ans-cell ${vAlignClass}" data-qid="${q.id}" data-sub="${key}" style="min-height:${heightMm}mm;">
-    <div class="cell-inner" contenteditable="true">${innerHtml}</div>
+  const innerStyles = [];
+  if (cellData.fontFamily) innerStyles.push(`font-family:${getFontFamilyStyle(cellData.fontFamily)}`);
+  if (template === "ruled") innerStyles.push(`--ruled-lines:${createRuledLines(getSubRuledLineCount(q, key))}`);
+  const innerStyle = innerStyles.length ? ` style="${innerStyles.join(";")}"` : "";
+  return `<div class="ans-cell ${vAlignClass} template-${template}" data-qid="${q.id}" data-sub="${key}" style="min-height:${heightMm}mm;">
+    <div class="cell-inner" contenteditable="true"${innerStyle}>${innerHtml}</div>
   </div>`;
+}
+
+function createRuledLines(count) {
+  const lineCount = Math.max(0, Math.min(20, Number(count) || 0));
+  if (!lineCount) return "none";
+  const stops = Array.from({ length: lineCount }, (_, index) => {
+    const y = ((index + 1) * 100) / (lineCount + 1);
+    return `linear-gradient(to bottom, transparent calc(${y}% - 0.35px), rgba(0,0,0,0.35) calc(${y}% - 0.35px), rgba(0,0,0,0.35) calc(${y}% + 0.35px), transparent calc(${y}% + 0.35px))`;
+  });
+  return stops.join(",");
 }
 
 function subpartLabel(index) {
@@ -2528,47 +3373,133 @@ function renderSubpartHost(q, subIdx, part, heightMm) {
   return html;
 }
 
-function renderQuestionBlock(q, qNum, showSubScore, showTotalScore) {
-  let html = `<div class="q-block">`;
+function renderQuestionBlock(q, qNum, showSubScore, showTotalScore, forceColumnBreak = false) {
+  normalizeQuestionOptions(q);
+  const qClasses = [
+    "q-block",
+    forceColumnBreak ? "q-break-before" : "",
+    `line-style-${q.lineStyle}`
+  ].filter(Boolean).join(" ");
+  let html = `<div class="${qClasses}" style="${getQuestionLineStyle(q)}">`;
   const parts = normalizeQuestionParts(q);
+  const majorNumber = escapeHtml(formatMajorNumber(q, qNum));
   if (showTotalScore) {
-    html += `<div class="q-header" style="display:flex;justify-content:space-between;align-items:center"><span>${qNum}</span><span style="font-size:9pt;color:var(--text-secondary)">/ ${q.totalScore}点</span></div>`;
+    html += `<div class="q-header" style="display:flex;justify-content:space-between;align-items:center"><span>${majorNumber}</span><span style="font-size:9pt;color:var(--text-secondary)">/ ${q.totalScore}点</span></div>`;
   } else {
-    html += `<div class="q-header">${qNum}</div>`;
+    html += `<div class="q-header">${majorNumber}</div>`;
   }
 
-  if (q.cols === 1) {
-    for (let i = 0; i < q.subCount; i++) {
-      const rowHeight = Math.max(Number(q.rowHeight) || 8, 8);
-      const scoreCell = showSubScore
-        ? `<div class="sub-score">${q.subScores[i] || 0}点</div>`
-        : "";
+  const showSubNumber = q.subNumberMode !== "none";
+  const subNumberClass = showSubNumber ? "" : " no-sub-number";
+  const visualSubNumberMap = getVisualSubNumberMap(q);
+  const rowHeight = Math.max(Number(q.rowHeight) || 8, 8);
+  const layoutRows = new Map();
+  q.subLayouts.forEach((layout, subIdx) => {
+    if (!layoutRows.has(layout.row)) layoutRows.set(layout.row, []);
+    layoutRows.get(layout.row).push({ subIdx, layout });
+  });
 
-      html += `<div class="q-row${showSubScore ? ' with-score' : ''}">
-        <div class="sub-num">(${i+1})</div>
-        ${renderSubpartHost(q, i, parts[i], rowHeight)}
-        ${scoreCell}
-      </div>`;
-    }
-  } else {
-    const rows = Math.ceil(q.subCount / q.cols);
-    for (let r = 0; r < rows; r++) {
-      html += `<div class="q-row-inline cols-${q.cols}${showSubScore ? ' with-score' : ''}">`;
-      for (let c = 0; c < q.cols; c++) {
-        const subIdx = r * q.cols + c;
-        if (subIdx >= q.subCount) break;
-        html += `<div class="sub-num">(${subIdx+1})</div>
-          ${renderSubpartHost(q, subIdx, parts[subIdx], Math.max(Number(q.rowHeight) || 8, 8))}`;
-        if (showSubScore) {
-          html += `<div class="sub-score">${q.subScores[subIdx] || 0}点</div>`;
-        }
+  Array.from(layoutRows.entries()).sort((a, b) => a[0] - b[0]).forEach(([rowIndex, items]) => {
+    items.sort((a, b) => (a.layout.order - b.layout.order) || (a.subIdx - b.subIdx));
+    const columns = [];
+    items.forEach((item, itemIndex) => {
+      if (showSubNumber) columns.push("8mm");
+      columns.push(`minmax(0, ${item.layout.width}fr)`);
+      if (showSubScore) columns.push("10mm");
+      if (itemIndex < items.length - 1) columns.push("4px");
+    });
+    html += `<div class="q-row-custom${subNumberClass}${showSubScore ? ' with-score' : ''}" data-qid="${q.id}" data-layout-row="${rowIndex}" style="grid-template-columns:${columns.join(" ")}">`;
+    items.forEach((item, itemIndex) => {
+      const subIdx = item.subIdx;
+      if (showSubNumber) {
+        html += `<div class="sub-num">${escapeHtml(formatVisualQuestionSubNumber(q, subIdx, visualSubNumberMap))}</div>`;
       }
-      html += `</div>`;
-    }
-  }
+      html += renderSubpartHost(q, subIdx, parts[subIdx], rowHeight);
+      if (showSubScore) {
+        html += `<div class="sub-score">${q.subScores[subIdx] || 0}点</div>`;
+      }
+      if (itemIndex < items.length - 1) {
+        html += `<div class="sub-resize-handle" data-qid="${q.id}" data-left-sub="${subIdx}" data-right-sub="${items[itemIndex + 1].subIdx}" title="左右の幅をドラッグで調整"></div>`;
+      }
+    });
+    html += `</div>`;
+  });
 
   html += `</div>`;
   return html;
+}
+
+function getCustomRowTemplate(q, rowIndex, showSubNumber, showSubScore) {
+  const items = q.subLayouts
+    .map((layout, subIdx) => ({ subIdx, layout }))
+    .filter(item => item.layout.row === rowIndex)
+    .sort((a, b) => (a.layout.order - b.layout.order) || (a.subIdx - b.subIdx));
+  const columns = [];
+  items.forEach((item, itemIndex) => {
+    if (showSubNumber) columns.push("8mm");
+    columns.push(`minmax(0, ${item.layout.width}fr)`);
+    if (showSubScore) columns.push("10mm");
+    if (itemIndex < items.length - 1) columns.push("4px");
+  });
+  return columns.join(" ");
+}
+
+function setupSubLayoutResize(container) {
+  container.querySelectorAll(".sub-resize-handle").forEach(handle => {
+    handle.addEventListener("mousedown", (e) => {
+      const q = data.questions.find(item => String(item.id) === String(handle.dataset.qid));
+      if (!q) return;
+      normalizeQuestionOptions(q);
+      const leftIndex = Number(handle.dataset.leftSub);
+      const rightIndex = Number(handle.dataset.rightSub);
+      const left = q.subLayouts[leftIndex];
+      const right = q.subLayouts[rightIndex];
+      const rowEl = handle.closest(".q-row-custom");
+      if (!left || !right || !rowEl) return;
+      const leftCell = (() => {
+        let el = handle.previousElementSibling;
+        while (el && !el.classList.contains("ans-cell")) el = el.previousElementSibling;
+        return el;
+      })();
+      const rightCell = (() => {
+        let el = handle.nextElementSibling;
+        while (el && !el.classList.contains("ans-cell")) el = el.nextElementSibling;
+        return el;
+      })();
+      const pairPx = Math.max(20, (leftCell?.getBoundingClientRect().width || 0) + (rightCell?.getBoundingClientRect().width || 0));
+      const startX = e.clientX;
+      const startLeft = left.width;
+      const startRight = right.width;
+      const total = startLeft + startRight;
+      const historySnapshot = createHistorySnapshot();
+      const showSubNumber = !rowEl.classList.contains("no-sub-number");
+      const showSubScore = rowEl.classList.contains("with-score");
+      const rowIndex = Number(rowEl.dataset.layoutRow);
+      handle.classList.add("is-dragging");
+      e.preventDefault();
+      e.stopPropagation();
+
+      const onMove = (moveEvent) => {
+        const deltaWeight = (moveEvent.clientX - startX) * total / pairPx;
+        const nextLeft = Math.max(0.3, Math.min(total - 0.3, startLeft + deltaWeight));
+        left.width = Math.round(nextLeft * 10) / 10;
+        right.width = Math.round((total - nextLeft) * 10) / 10;
+        rowEl.style.gridTemplateColumns = getCustomRowTemplate(q, rowIndex, showSubNumber, showSubScore);
+      };
+      const onUp = () => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        handle.classList.remove("is-dragging");
+        if (!snapshotsEqual(historySnapshot, createHistorySnapshot())) {
+          pushUndoSnapshot(historySnapshot);
+          renderQuestionList();
+          render();
+        }
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    });
+  });
 }
 
 /* ========= シート描画 ========= */
@@ -2576,6 +3507,7 @@ function render() {
   const savedCell = selectedCell ? { qId: selectedCell.qId, subIdx: selectedCell.subIdx, editTarget: selectedCell.editTarget } : null;
   const savedTextboxId = selectedTextbox ? selectedTextbox.id : null;
   const savedImageId = selectedImage ? selectedImage.id : null;
+  const savedShapeId = selectedShape ? selectedShape.id : null;
 
   const container = document.getElementById("sheetContainer");
   if (!container) return;
@@ -2609,7 +3541,7 @@ function render() {
 
     let html = `
       <div class="sheet-header">
-        <h1 class="title" contenteditable="true" spellcheck="false" aria-label="解答用紙タイトル">${escapeHtml(title)}</h1>
+        <h1 class="title" contenteditable="true" spellcheck="false" aria-label="解答用紙タイトル"${data.titleFontFamily ? ` style="font-family:${getFontFamilyStyle(data.titleFontFamily)}"` : ""}>${escapeHtml(title)}</h1>
         <table class="hdr-table">
           <tr>
             <th>年</th><td></td>
@@ -2623,8 +3555,9 @@ function render() {
       <div class="sheet-body cols-${cols}${centerLine && cols > 1 ? ' has-divider' : ''}">
     `;
 
-    pageQuestions.forEach(q => {
-      html += renderQuestionBlock(q, questionNumbers.get(q.id), showSubScore, showTotalScore);
+    pageQuestions.forEach((q, questionIndexOnPage) => {
+      const forceColumnBreak = q.columnBreakBefore && questionIndexOnPage > 0;
+      html += renderQuestionBlock(q, questionNumbers.get(q.id), showSubScore, showTotalScore, forceColumnBreak);
     });
 
     html += `</div>`;
@@ -2644,6 +3577,7 @@ function render() {
       cell.contentEditable = "true";
       cell.spellcheck = false;
       cell.textContent = header[field] || "";
+      if (data.headerFontFamilies?.[field]) cell.style.fontFamily = getFontFamilyStyle(data.headerFontFamilies[field]);
       if (field === "name") cell.classList.add("name");
     });
   });
@@ -2652,7 +3586,13 @@ function render() {
   container.querySelectorAll(".sheet-header .title").forEach(titleEl => {
     titleEl.addEventListener("focus", () => {
       beginHistoryInteraction();
+      selectedHeader = { type: "title", element: titleEl };
+      selectedCell = null;
+      selectedTextbox = null;
+      selectedImage = null;
+      selectedShape = null;
       titleEl.classList.add("is-active");
+      updateFormatBar();
     });
     titleEl.addEventListener("input", () => {
       const titleText = getEditableTitleText(titleEl);
@@ -2670,6 +3610,8 @@ function render() {
       syncTitle(normalizedTitle, { renderSheet: false });
       commitHistoryInteraction();
     });
+    titleEl.addEventListener("keyup", updateFormatBar);
+    titleEl.addEventListener("mouseup", updateFormatBar);
     titleEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
@@ -2682,7 +3624,15 @@ function render() {
   // セル選択ハンドラを登録
   container.querySelectorAll("[data-header-field]").forEach(fieldEl => {
     const field = fieldEl.dataset.headerField;
-    fieldEl.addEventListener("focus", beginHistoryInteraction);
+    fieldEl.addEventListener("focus", () => {
+      beginHistoryInteraction();
+      selectedHeader = { type: "field", field, element: fieldEl };
+      selectedCell = null;
+      selectedTextbox = null;
+      selectedImage = null;
+      selectedShape = null;
+      updateFormatBar();
+    });
     fieldEl.addEventListener("input", () => {
       const text = getEditableHeaderText(fieldEl);
       const headerFields = ensureHeaderFields();
@@ -2699,6 +3649,8 @@ function render() {
       });
       commitHistoryInteraction();
     });
+    fieldEl.addEventListener("keyup", updateFormatBar);
+    fieldEl.addEventListener("mouseup", updateFormatBar);
     fieldEl.addEventListener("keydown", e => {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -2716,32 +3668,46 @@ function render() {
         e.preventDefault();
         doSelectCell(cell);
         focusEditableAtStart(inner);
+        applyPendingFontFamilyToTarget(inner);
+        applyPendingFontSizeToTarget(inner);
         applyTextColor(currentTextColor, { record: false });
       }
     });
     if (inner) {
       inner.addEventListener("focus", () => {
         doSelectCell(cell, "body");
+        applyPendingFontFamilyToTarget(inner);
+        applyPendingFontSizeToTarget(inner);
         applyTextColor(currentTextColor, { record: false });
       });
-      inner.addEventListener("beforeinput", () => {
+      inner.addEventListener("beforeinput", (e) => {
+        applyPendingFontFamilyToTarget(inner);
         applyTextColor(currentTextColor, { record: false });
+        if (currentHighlightColor) applyHighlightColor(currentHighlightColor, { record: false });
       });
-      inner.addEventListener("input", () => onCellInput(inner, "html"));
+      inner.addEventListener("input", () => {
+        applyPendingFontFamilyAfterInput(inner);
+        applyPendingFontSizeAfterInput(inner);
+        onCellInput(inner, "html");
+      });
       inner.addEventListener("blur", commitHistoryInteraction);
       inner.addEventListener("keyup", updateFormatBar);
       inner.addEventListener("mouseup", updateFormatBar);
     }
   });
+  setupSubLayoutResize(container);
 
   // テキストボックスを再描画
   renderTextboxes();
   renderImages();
+  renderShapes();
 
   // 選択状態を復元
   selectedCell = null;
   selectedTextbox = null;
   selectedImage = null;
+  selectedShape = null;
+  selectedHeader = null;
   if (savedCell) {
     const el = container.querySelector(`.ans-cell[data-qid="${savedCell.qId}"][data-sub="${savedCell.subIdx}"]`);
     if (el) {
@@ -2763,6 +3729,14 @@ function render() {
     if (img) {
       img.classList.add("selected");
       selectedImage = (data.images || []).find(image => image.id === savedImageId);
+      updateFormatBar();
+    }
+  }
+  if (savedShapeId) {
+    const shapeEl = document.querySelector(`.floating-shape[data-id="${savedShapeId}"]`);
+    if (shapeEl) {
+      shapeEl.classList.add("selected");
+      selectedShape = (data.shapes || []).find(shape => shape.id === savedShapeId);
       updateFormatBar();
     }
   }
@@ -2860,8 +3834,11 @@ function doSelectCell(cellOuter, editTarget = null) {
     if (c) c.setAttribute("contenteditable", "false");
   });
   document.querySelectorAll(".floating-image.selected").forEach(img => img.classList.remove("selected"));
+  document.querySelectorAll(".floating-shape.selected").forEach(shape => shape.classList.remove("selected"));
   selectedTextbox = null;
   selectedImage = null;
+  selectedShape = null;
+  selectedHeader = null;
   const tbSettings = document.getElementById("textboxSettings");
   if (tbSettings) tbSettings.style.display = "none";
 
@@ -2871,6 +3848,7 @@ function doSelectCell(cellOuter, editTarget = null) {
   const subIdx = cellOuter.dataset.sub;
   selectedCell = { qId, subIdx, element: cellOuter, editTarget: editTarget || "body" };
   updateFormatBar();
+  applyPendingFormatBrush();
 }
 
 function onCellInput(inner, field = "html") {
@@ -2884,14 +3862,16 @@ function onCellInput(inner, field = "html") {
   if (!q) return;
   const cellData = getCellData(q, subIdx);
   cellData[field] = inner.innerHTML;
+  cellData.fontFamily = inner.dataset.pendingFontFamily || currentFontFamily;
   delete cellData.answerHtml;
   scheduleHistoryInteractionCommit();
 }
 
 /* ========= フォーマット適用 ========= */
-function hasActiveEditTarget() { return selectedCell || selectedTextbox; }
+function hasActiveEditTarget() { return selectedCell || selectedTextbox || selectedHeader; }
 
 function getActiveEditElement() {
+  if (selectedHeader) return selectedHeader.element;
   if (selectedCell) return selectedCell.element.querySelector(".cell-inner");
   if (selectedTextbox) {
     const tb = document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"]`);
@@ -2900,54 +3880,262 @@ function getActiveEditElement() {
   return null;
 }
 
+function getActiveTargetKey() {
+  if (selectedHeader) return selectedHeader.type === "title" ? "header:title" : `header:${selectedHeader.field}`;
+  if (selectedCell) return `cell:${selectedCell.qId}:${selectedCell.subIdx}`;
+  if (selectedTextbox) return `textbox:${selectedTextbox.id}`;
+  return "";
+}
+
+function getSelectionRangeInTarget(target) {
+  const sel = window.getSelection();
+  if (!target || !sel || !sel.rangeCount) return null;
+  const range = sel.getRangeAt(0);
+  return target.contains(range.commonAncestorContainer) ? range : null;
+}
+
+function rememberActiveSelection() {
+  const target = getActiveEditElement();
+  const range = getSelectionRangeInTarget(target);
+  if (!target || !range) return;
+  lastEditRange = {
+    key: getActiveTargetKey(),
+    range: range.cloneRange()
+  };
+}
+
+function restoreActiveSelection(target) {
+  if (!target) return null;
+  const activeRange = getSelectionRangeInTarget(target);
+  if (activeRange) return activeRange;
+  if (lastEditRange && lastEditRange.key === getActiveTargetKey()) {
+    try {
+      const range = lastEditRange.range.cloneRange();
+      if (target.contains(range.commonAncestorContainer)) {
+        target.focus();
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        return range;
+      }
+    } catch (err) {
+      lastEditRange = null;
+    }
+  }
+  return focusActiveEditTarget(target, true);
+}
+
+function focusActiveEditTarget(target, atEnd = true) {
+  if (!target) return null;
+  target.focus();
+  let range = getSelectionRangeInTarget(target);
+  if (!range) {
+    range = document.createRange();
+    range.selectNodeContents(target);
+    range.collapse(!atEnd);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  return range;
+}
+
+function selectActiveTargetContents(target) {
+  if (!target) return null;
+  target.focus();
+  const range = document.createRange();
+  range.selectNodeContents(target);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  return range;
+}
+
 function execFormat(cmd) {
   if (!hasActiveEditTarget()) return;
   recordEditCommandHistory();
+  const target = getActiveEditElement();
+  focusActiveEditTarget(target, true);
   document.execCommand(cmd, false, null);
   saveCellState();
   updateFormatBar();
 }
 
 function applyFontFamily(value) {
+  currentFontFamily = FONT_FAMILY_MAP[value] ? value : DEFAULT_FONT_FAMILY;
+  const select = document.getElementById("fmtFontFamily");
+  if (select && select.value !== currentFontFamily) select.value = currentFontFamily;
   if (!hasActiveEditTarget()) return;
+  const target = getActiveEditElement();
+  const range = restoreActiveSelection(target);
+  if (!range) return;
+  const fontName = getFontFamilyStyle(currentFontFamily);
+  target.dataset.pendingFontFamily = currentFontFamily;
+  target.style.fontFamily = fontName;
+  if (selectedCell) {
+    const q = data.questions.find(q => q.id === selectedCell.qId);
+    const cellData = getCellData(q, selectedCell.subIdx);
+    cellData.fontFamily = currentFontFamily;
+  } else if (selectedTextbox) {
+    selectedTextbox.fontFamily = currentFontFamily;
+  } else if (selectedHeader) {
+    if (selectedHeader.type === "title") {
+      data.titleFontFamily = currentFontFamily;
+      document.querySelectorAll(".sheet-header .title").forEach(el => el.style.fontFamily = fontName);
+    } else {
+      if (!data.headerFontFamilies) data.headerFontFamilies = {};
+      data.headerFontFamilies[selectedHeader.field] = currentFontFamily;
+      document.querySelectorAll(`[data-header-field="${selectedHeader.field}"]`).forEach(el => el.style.fontFamily = fontName);
+    }
+  }
+  if (range.collapsed) {
+    saveCellState();
+    updateFormatBar();
+    return;
+  }
   recordEditCommandHistory();
-  const fontName = value === "mincho" ? "Hiragino Mincho ProN" : "Hiragino Sans";
-  document.execCommand("fontName", false, fontName);
+  const span = document.createElement("span");
+  span.style.fontFamily = fontName;
+  try {
+    span.appendChild(range.extractContents());
+    range.insertNode(span);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    const newRange = document.createRange();
+    newRange.selectNodeContents(span);
+    sel.addRange(newRange);
+    lastEditRange = { key: getActiveTargetKey(), range: newRange.cloneRange() };
+  } catch (err) {
+    console.error(err);
+  }
   saveCellState();
   updateFormatBar();
 }
 
-function applyFontSize(size) {
+function applyPendingFontFamilyToTarget(target) {
+  if (!target) return;
+  const fontName = getFontFamilyStyle(currentFontFamily);
+  if (currentFontFamily && currentFontFamily !== DEFAULT_FONT_FAMILY) {
+    target.dataset.pendingFontFamily = currentFontFamily;
+    target.style.fontFamily = fontName;
+  } else {
+    delete target.dataset.pendingFontFamily;
+    target.style.fontFamily = "";
+  }
+}
+
+function applyPendingFontFamilyAfterInput(target) {
+  const pendingFamily = target?.dataset?.pendingFontFamily;
+  if (!target || !pendingFamily || pendingFamily === DEFAULT_FONT_FAMILY) return false;
+  const fontName = getFontFamilyStyle(pendingFamily);
+  let changed = false;
+  Array.from(target.childNodes).forEach(node => {
+    if (node.nodeType !== Node.TEXT_NODE || !node.textContent) return;
+    const span = document.createElement("span");
+    span.style.fontFamily = fontName;
+    if (currentFontSize && currentFontSize !== DEFAULT_FONT_SIZE) span.style.fontSize = currentFontSize;
+    if (currentTextColor) span.style.color = currentTextColor;
+    if (currentHighlightColor) span.style.backgroundColor = currentHighlightColor;
+    span.textContent = node.textContent;
+    node.replaceWith(span);
+    changed = true;
+  });
+  if (!changed) return false;
+  const range = document.createRange();
+  range.selectNodeContents(target);
+  range.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  lastEditRange = { key: getActiveTargetKey(), range: range.cloneRange() };
+  return true;
+}
+
+function applyFontSize(size, options = {}) {
+  currentFontSize = size;
+  const select = document.getElementById("fmtFontSize");
+  if (select && select.value !== size) select.value = size;
   if (!hasActiveEditTarget()) return;
-  recordEditCommandHistory();
+  const target = getActiveEditElement();
+  restoreActiveSelection(target);
   const sel = window.getSelection();
   if (!sel.rangeCount) return;
   const range = sel.getRangeAt(0);
   if (range.collapsed) {
-    document.execCommand("fontSize", false, "7");
-    const target = getActiveEditElement();
-    if (target) {
-      target.querySelectorAll('font[size="7"]').forEach(f => {
-        const span = document.createElement("span");
-        span.style.fontSize = size;
-        span.innerHTML = f.innerHTML;
-        f.replaceWith(span);
-      });
-    }
-  } else {
-    const span = document.createElement("span");
-    span.style.fontSize = size;
-    try {
-      span.appendChild(range.extractContents());
-      range.insertNode(span);
-      sel.removeAllRanges();
-      const newRange = document.createRange();
-      newRange.selectNodeContents(span);
-      sel.addRange(newRange);
-    } catch(err) { console.error(err); }
+    target.dataset.pendingFontSize = size;
+    target.style.fontSize = size;
+    updateFormatBar();
+    return;
   }
+  if (options.record !== false) recordEditCommandHistory();
+  const span = document.createElement("span");
+  span.style.fontSize = size;
+  try {
+    span.appendChild(range.extractContents());
+    range.insertNode(span);
+    sel.removeAllRanges();
+    const newRange = document.createRange();
+    newRange.selectNodeContents(span);
+    sel.addRange(newRange);
+  } catch(err) { console.error(err); }
   saveCellState();
   updateFormatBar();
+}
+
+function applyPendingFontSizeToTarget(target) {
+  if (!target) return;
+  if (currentFontSize && currentFontSize !== DEFAULT_FONT_SIZE) {
+    target.dataset.pendingFontSize = currentFontSize;
+    target.style.fontSize = currentFontSize;
+  } else {
+    delete target.dataset.pendingFontSize;
+    target.style.fontSize = "";
+  }
+}
+
+function applyPendingFontSizeAfterInput(target) {
+  const pendingSize = target?.dataset?.pendingFontSize;
+  if (!target || !pendingSize || pendingSize === DEFAULT_FONT_SIZE) return false;
+  let changed = false;
+  Array.from(target.childNodes).forEach(node => {
+    if (node.nodeType !== Node.TEXT_NODE || !node.textContent) return;
+    const span = document.createElement("span");
+    span.style.fontSize = pendingSize;
+    if (currentTextColor) span.style.color = currentTextColor;
+    if (currentHighlightColor) span.style.backgroundColor = currentHighlightColor;
+    span.textContent = node.textContent;
+    node.replaceWith(span);
+    changed = true;
+  });
+  if (!changed) return false;
+  const range = document.createRange();
+  range.selectNodeContents(target);
+  range.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  return true;
+}
+
+function getFontSizeSteps() {
+  const select = document.getElementById("fmtFontSize");
+  const values = select
+    ? Array.from(select.options).map(opt => opt.value || opt.textContent.trim())
+    : ["8pt", "9pt", "10pt", "11pt", "12pt", "14pt", "16pt", "18pt"];
+  return values.filter(Boolean);
+}
+
+function stepFontSize(delta) {
+  const sizes = getFontSizeSteps();
+  const select = document.getElementById("fmtFontSize");
+  const current = select?.value || currentFontSize || DEFAULT_FONT_SIZE;
+  let index = sizes.indexOf(current);
+  if (index < 0) index = sizes.indexOf(DEFAULT_FONT_SIZE);
+  if (index < 0) index = 0;
+  const next = sizes[Math.max(0, Math.min(sizes.length - 1, index + delta))];
+  if (!next || next === current) return;
+  if (select) select.value = next;
+  applyFontSize(next);
 }
 
 function applyTextColor(color, options = {}) {
@@ -2969,6 +4157,19 @@ function applyTextColor(color, options = {}) {
   updateFormatBar();
 }
 
+function applyHighlightColor(color, options = {}) {
+  currentHighlightColor = color === "#ffffff" ? null : color;
+  const swatch = document.getElementById("fmtHighlightSwatch");
+  if (swatch) swatch.style.background = color;
+  const target = getActiveEditElement();
+  if (!target) return;
+  if (options.record !== false) recordEditCommandHistory();
+  focusActiveEditTarget(target, true);
+  document.execCommand("backColor", false, color);
+  saveCellState();
+  updateFormatBar();
+}
+
 function setAlign(align) {
   const target = getActiveEditElement();
   if (!target) return;
@@ -2986,10 +4187,12 @@ function setAlign(align) {
     cellData.align = align;
     normalizeAnswerMarkup(target);
     cellData.html = target.innerHTML;
+    cellData.fontFamily = target.dataset.pendingFontFamily || cellData.fontFamily || currentFontFamily;
     delete cellData.answerHtml;
   } else if (selectedTextbox) {
     selectedTextbox.align = align;
     selectedTextbox.html = target.innerHTML;
+    selectedTextbox.fontFamily = target.dataset.pendingFontFamily || selectedTextbox.fontFamily || currentFontFamily;
   }
   updateFormatBar();
 }
@@ -3022,11 +4225,24 @@ function saveCellState() {
     if (inner) {
       normalizeAnswerMarkup(inner);
       cellData.html = inner.innerHTML;
+      cellData.fontFamily = inner.dataset.pendingFontFamily || cellData.fontFamily || currentFontFamily;
       delete cellData.answerHtml;
     }
   } else if (selectedTextbox) {
     const tb = document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"] .tb-content`);
-    if (tb) selectedTextbox.html = tb.innerHTML;
+    if (tb) {
+      selectedTextbox.html = tb.innerHTML;
+      selectedTextbox.fontFamily = tb.dataset.pendingFontFamily || selectedTextbox.fontFamily || currentFontFamily;
+    }
+  } else if (selectedHeader) {
+    if (selectedHeader.type === "title") {
+      data.titleFontFamily = selectedHeader.element.dataset.pendingFontFamily || data.titleFontFamily || currentFontFamily;
+      syncTitle(getEditableTitleText(selectedHeader.element), { renderSheet: false });
+    } else {
+      if (!data.headerFontFamilies) data.headerFontFamilies = {};
+      data.headerFontFamilies[selectedHeader.field] = selectedHeader.element.dataset.pendingFontFamily || data.headerFontFamilies[selectedHeader.field] || currentFontFamily;
+      ensureHeaderFields()[selectedHeader.field] = getEditableHeaderText(selectedHeader.element);
+    }
   }
 }
 
@@ -3037,6 +4253,189 @@ function clearCellText() {
   target.innerHTML = "";
   saveCellState();
   target.focus();
+}
+
+function getSelectedPlainText(target) {
+  const range = getSelectionRangeInTarget(target);
+  if (range && !range.collapsed) return window.getSelection().toString();
+  return target ? target.innerText || target.textContent || "" : "";
+}
+
+async function writeClipboardText(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return true;
+  }
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.style.position = "fixed";
+  area.style.left = "-9999px";
+  document.body.appendChild(area);
+  area.select();
+  const ok = document.execCommand("copy");
+  area.remove();
+  return ok;
+}
+
+async function copyActiveContent() {
+  const target = getActiveEditElement();
+  if (!target) return;
+  const text = getSelectedPlainText(target);
+  if (!text) return;
+  try {
+    await writeClipboardText(text);
+  } catch (err) {
+    console.warn("Clipboard copy failed", err);
+  }
+}
+
+function deleteCurrentSelectionOrContent(target) {
+  const range = focusActiveEditTarget(target, true);
+  if (range && !range.collapsed) {
+    range.deleteContents();
+  } else {
+    target.innerHTML = "";
+  }
+}
+
+async function cutActiveContent() {
+  const target = getActiveEditElement();
+  if (!target) return;
+  const text = getSelectedPlainText(target);
+  if (!text) return;
+  try {
+    await writeClipboardText(text);
+  } catch (err) {
+    console.warn("Clipboard cut copy failed", err);
+  }
+  recordEditCommandHistory();
+  deleteCurrentSelectionOrContent(target);
+  saveCellState();
+  updateFormatBar();
+}
+
+function insertPlainTextAtSelection(target, text) {
+  focusActiveEditTarget(target, true);
+  if (document.execCommand("insertText", false, text)) return;
+  const range = getSelectionRangeInTarget(target);
+  if (!range) return;
+  range.deleteContents();
+  range.insertNode(document.createTextNode(text));
+  range.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+async function pasteClipboardText() {
+  const target = getActiveEditElement();
+  if (!target) return;
+  let text = "";
+  try {
+    text = await navigator.clipboard?.readText?.() || "";
+  } catch (err) {
+    console.warn("Clipboard paste failed", err);
+  }
+  if (!text) return;
+  recordEditCommandHistory();
+  insertPlainTextAtSelection(target, text);
+  normalizeAnswerMarkup(target);
+  saveCellState();
+  updateFormatBar();
+}
+
+function addTable() {
+  const target = getActiveEditElement();
+  if (!target) {
+    addTextbox();
+    setTimeout(() => {
+      const newTarget = getActiveEditElement();
+      if (newTarget) insertTableIntoTarget(newTarget);
+    }, 80);
+    return;
+  }
+  insertTableIntoTarget(target);
+}
+
+function insertTableIntoTarget(target) {
+  const rows = clampNumber(prompt("行数", "3"), 1, 12, 3);
+  const cols = clampNumber(prompt("列数", "3"), 1, 8, 3);
+  recordEditCommandHistory();
+  const cells = Array.from({ length: rows }, () =>
+    `<tr>${Array.from({ length: cols }, () => "<td><br></td>").join("")}</tr>`
+  ).join("");
+  focusActiveEditTarget(target, true);
+  document.execCommand("insertHTML", false, `<table class="floating-table">${cells}</table>`);
+  saveCellState();
+  updateFormatBar();
+}
+
+function readSelectionFormat(target) {
+  const range = getSelectionRangeInTarget(target);
+  let source = range ? range.commonAncestorContainer : target;
+  if (source && source.nodeType === Node.TEXT_NODE) source = source.parentElement;
+  if (!source || source === target) source = target;
+  const style = window.getComputedStyle(source);
+  return {
+    key: getActiveTargetKey(),
+    bold: document.queryCommandState("bold") || Number(style.fontWeight) >= 600,
+    italic: document.queryCommandState("italic") || style.fontStyle === "italic",
+    underline: document.queryCommandState("underline") || style.textDecorationLine.includes("underline"),
+    strike: document.queryCommandState("strikeThrough") || style.textDecorationLine.includes("line-through"),
+    superscript: document.queryCommandState("superscript"),
+    subscript: document.queryCommandState("subscript"),
+    color: style.color,
+    fontSize: style.fontSize,
+    align: target.classList.contains("text-justify-all") ? "justify" : (target.style.textAlign || style.textAlign || "left")
+  };
+}
+
+function copyCurrentFormat() {
+  const target = getActiveEditElement();
+  if (!target) return;
+  pendingFormatBrush = readSelectionFormat(target);
+  setActiveBtn("clipFormat", true);
+}
+
+function applyPendingFormatBrush() {
+  if (!pendingFormatBrush || pendingFormatBrush.key === getActiveTargetKey()) return;
+  const target = getActiveEditElement();
+  if (!target) return;
+  const format = pendingFormatBrush;
+  pendingFormatBrush = null;
+  setActiveBtn("clipFormat", false);
+  recordEditCommandHistory();
+  selectActiveTargetContents(target);
+  const commands = [
+    ["bold", format.bold],
+    ["italic", format.italic],
+    ["underline", format.underline],
+    ["strikeThrough", format.strike],
+    ["superscript", format.superscript],
+    ["subscript", format.subscript]
+  ];
+  commands.forEach(([cmd, shouldBeOn]) => {
+    if (document.queryCommandState(cmd) !== shouldBeOn) document.execCommand(cmd, false, null);
+  });
+  if (format.color) document.execCommand("foreColor", false, format.color);
+  if (format.fontSize) applyFontSize(format.fontSize, { record: false });
+  if (format.align) {
+    if (format.align === "justify") {
+      target.classList.add("text-justify-all");
+      target.style.textAlign = "";
+    } else {
+      target.classList.remove("text-justify-all");
+      target.style.textAlign = format.align;
+    }
+    if (selectedCell) {
+      const q = data.questions.find(q => q.id === selectedCell.qId);
+      getCellData(q, selectedCell.subIdx).align = format.align;
+    } else if (selectedTextbox) {
+      selectedTextbox.align = format.align;
+    }
+  }
+  saveCellState();
+  updateFormatBar();
 }
 
 function deleteSelected() {
@@ -3055,21 +4454,34 @@ function deleteSelected() {
     selectedImage = null;
     renderImages();
     updateFormatBar();
+  } else if (selectedShape) {
+    recordHistory();
+    data.shapes = (data.shapes || []).filter(shape => shape.id !== selectedShape.id);
+    selectedShape = null;
+    renderShapes();
+    updateFormatBar();
   }
 }
 
 /* ========= フォーマットバー状態更新 ========= */
 function updateFormatBar() {
   const hasSel = selectedCell || selectedTextbox;
+  updateContextActionButtons();
   const info = document.getElementById("selectedInfo");
 
-  if (selectedImage) {
-    if (info) info.innerHTML = `<span class="dot"></span>選択中: 画像 #${selectedImage.id}`;
-    ["fmtBold", "fmtItalic", "fmtUnderline", "fmtAlignLeft", "fmtAlignCenter", "fmtAlignRight", "fmtAlignJustify", "fmtVAlignTop", "fmtVAlignMiddle", "fmtVAlignBottom"].forEach(id => {
+  if (selectedImage || selectedShape) {
+    if (info) info.innerHTML = `<span class="dot"></span>選択中: ${selectedShape ? "図形" : "画像"} #${(selectedShape || selectedImage).id}`;
+    ["clipPaste", "clipCut", "clipCopy", "clipFormat", "fmtBold", "fmtItalic", "fmtUnderline", "fmtStrike", "fmtSuperscript", "fmtSubscript", "fmtAlignLeft", "fmtAlignCenter", "fmtAlignRight", "fmtAlignJustify", "fmtVAlignTop", "fmtVAlignMiddle", "fmtVAlignBottom"].forEach(id => {
       const b = document.getElementById(id);
       if (b) b.disabled = true;
     });
+    ["fmtFontGrow", "fmtFontShrink"].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.disabled = false;
+    });
     return;
+  } else if (selectedHeader) {
+    if (info) info.innerHTML = `<span class="dot"></span>選択中: ${selectedHeader.type === "title" ? "タイトル" : "ヘッダー"}`;
   } else if (selectedTextbox) {
     if (info) info.innerHTML = `<span class="dot"></span>選択中: テキストボックス #${selectedTextbox.id}`;
   } else if (selectedCell) {
@@ -3080,9 +4492,20 @@ function updateFormatBar() {
     setActiveBtn("fmtBold", false);
     setActiveBtn("fmtItalic", false);
     setActiveBtn("fmtUnderline", false);
+    setActiveBtn("fmtStrike", false);
+    setActiveBtn("fmtSuperscript", false);
+    setActiveBtn("fmtSubscript", false);
+    ["clipPaste", "clipCut", "clipCopy", "clipFormat", "fmtBold", "fmtItalic", "fmtUnderline", "fmtStrike", "fmtSuperscript", "fmtSubscript", "fmtAlignLeft", "fmtAlignCenter", "fmtAlignRight", "fmtAlignJustify", "fmtVAlignTop", "fmtVAlignMiddle", "fmtVAlignBottom"].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.disabled = id === "clipFormat" ? !pendingFormatBrush : true;
+    });
+    ["fmtFontGrow", "fmtFontShrink"].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.disabled = false;
+    });
     return;
   }
-  ["fmtBold", "fmtItalic", "fmtUnderline", "fmtAlignLeft", "fmtAlignCenter", "fmtAlignRight", "fmtAlignJustify"].forEach(id => {
+  ["clipPaste", "clipCut", "clipCopy", "clipFormat", "fmtBold", "fmtItalic", "fmtUnderline", "fmtStrike", "fmtSuperscript", "fmtSubscript", "fmtFontGrow", "fmtFontShrink", "fmtAlignLeft", "fmtAlignCenter", "fmtAlignRight", "fmtAlignJustify"].forEach(id => {
     const b = document.getElementById(id);
     if (b) b.disabled = false;
   });
@@ -3091,14 +4514,32 @@ function updateFormatBar() {
     setActiveBtn("fmtBold", document.queryCommandState("bold"));
     setActiveBtn("fmtItalic", document.queryCommandState("italic"));
     setActiveBtn("fmtUnderline", document.queryCommandState("underline"));
+    setActiveBtn("fmtStrike", document.queryCommandState("strikeThrough"));
+    setActiveBtn("fmtSuperscript", document.queryCommandState("superscript"));
+    setActiveBtn("fmtSubscript", document.queryCommandState("subscript"));
   } catch(e) {}
 
   // 水平配置
   let align = "left";
   const target = getActiveEditElement();
   if (target) {
+    rememberActiveSelection();
     if (target.classList.contains("text-justify-all")) align = "justify";
     else align = target.style.textAlign || "left";
+    try {
+      const color = document.queryCommandValue("foreColor");
+      if (color) {
+        const swatch = document.getElementById("fmtColorSwatch");
+        if (swatch) swatch.style.background = color;
+        setActiveBtn("fmtColorBlack", !isAnswerColor(color));
+        setActiveBtn("fmtColorAnswer", isAnswerColor(color));
+      }
+      const bg = document.queryCommandValue("backColor");
+      if (bg) {
+        const hi = document.getElementById("fmtHighlightSwatch");
+        if (hi) hi.style.background = bg;
+      }
+    } catch(e) {}
   }
   setActiveBtn("fmtAlignLeft", align === "left");
   setActiveBtn("fmtAlignCenter", align === "center");
@@ -3123,6 +4564,16 @@ function updateFormatBar() {
   });
 }
 
+function updateContextActionButtons() {
+  const hasLayerSelection = !!(selectedTextbox || selectedImage || selectedShape);
+  document.querySelectorAll("[data-requires-layer-selection]").forEach(btn => {
+    btn.disabled = !hasLayerSelection;
+  });
+  document.querySelectorAll("[data-requires-shape-selection]").forEach(btn => {
+    btn.disabled = !selectedShape;
+  });
+}
+
 function setActiveBtn(id, on) {
   const btn = document.getElementById(id);
   if (!btn) return;
@@ -3138,7 +4589,8 @@ function addTextbox() {
     x: 14, y: 60, w: 60, h: 14,
     html: "テキストを入力",
     borderStyle: "solid", borderWidth: "0.5pt",
-    bg: "transparent", align: "left", vAlign: "top"
+    bg: "transparent", align: "left", vAlign: "top",
+    zIndex: nextLayerZ()
   };
   data.textboxes.push(tb);
   renderTextboxes();
@@ -3151,6 +4603,8 @@ function addTextbox() {
       document.querySelectorAll(".ans-cell.selected").forEach(c => c.classList.remove("selected"));
       selectedCell = null;
       selectedImage = null;
+      selectedShape = null;
+      selectedHeader = null;
       el.classList.add("selected");
       selectedTextbox = tb;
       const ts = document.getElementById("textboxSettings");
@@ -3189,17 +4643,45 @@ function renderTextboxes() {
 
     const el = document.createElement("div");
     el.className = `floating-textbox border-style-${tb.borderStyle} bg-${tb.bg}`;
+    if (selectedTextbox && selectedTextbox.id === tb.id) el.classList.add("selected");
     el.dataset.id = tb.id;
     el.style.left = tb.x + "mm";
     el.style.top = tb.y + "mm";
     el.style.width = tb.w + "mm";
     el.style.height = tb.h + "mm";
+    el.style.zIndex = tb.zIndex || 2;
     if (tb.borderStyle !== "none") el.style.borderWidth = tb.borderWidth;
+    const contentStyle = [
+      `text-align:${tb.align || 'left'}`,
+      tb.fontFamily ? `font-family:${getFontFamilyStyle(tb.fontFamily)}` : ""
+    ].filter(Boolean).join(";");
 
-    el.innerHTML = `<div class="tb-content valign-${tb.vAlign}" contenteditable="false" style="text-align:${tb.align || 'left'}">${tb.html}</div><div class="resize-handle"></div>`;
+    el.innerHTML = `<div class="tb-content valign-${tb.vAlign}" contenteditable="false" style="${contentStyle}">${tb.html}</div><div class="resize-handle"></div>`;
     layer.appendChild(el);
     setupTextboxBehavior(el, tb);
   });
+}
+
+function selectTextboxById(id) {
+  const el = document.querySelector(`.floating-textbox[data-id="${id}"]`);
+  const tb = data.textboxes.find(t => t.id === id);
+  if (!el || !tb) return;
+  document.querySelectorAll(".ans-cell.selected").forEach(c => c.classList.remove("selected"));
+  document.querySelectorAll(".floating-image.selected").forEach(img => img.classList.remove("selected"));
+  document.querySelectorAll(".floating-shape.selected").forEach(shape => shape.classList.remove("selected"));
+  document.querySelectorAll(".floating-textbox.selected").forEach(t => {
+    if (t !== el) t.classList.remove("selected", "editing");
+  });
+  selectedCell = null;
+  selectedImage = null;
+  selectedShape = null;
+  selectedHeader = null;
+  selectedTextbox = tb;
+  el.classList.add("selected");
+  const ts = document.getElementById("textboxSettings");
+  if (ts) ts.style.display = "";
+  syncTextboxSettingsUI(tb);
+  updateFormatBar();
 }
 
 function setupTextboxBehavior(el, tb) {
@@ -3215,6 +4697,7 @@ function setupTextboxBehavior(el, tb) {
     origW = tb.w; origH = tb.h;
     selectedTextbox = tb;
     selectedCell = null;
+    selectedHeader = null;
     el.classList.add("selected");
     const ts = document.getElementById("textboxSettings");
     if (ts) ts.style.display = "";
@@ -3237,8 +4720,11 @@ function setupTextboxBehavior(el, tb) {
 
     document.querySelectorAll(".ans-cell.selected").forEach(c => c.classList.remove("selected"));
     document.querySelectorAll(".floating-image.selected").forEach(img => img.classList.remove("selected"));
+    document.querySelectorAll(".floating-shape.selected").forEach(shape => shape.classList.remove("selected"));
     selectedCell = null;
     selectedImage = null;
+    selectedShape = null;
+    selectedHeader = null;
 
     document.querySelectorAll(".floating-textbox.selected").forEach(t => {
       if (t !== el) {
@@ -3253,6 +4739,7 @@ function setupTextboxBehavior(el, tb) {
     if (ts) ts.style.display = "";
     syncTextboxSettingsUI(tb);
     updateFormatBar();
+    applyPendingFormatBrush();
 
     isDragging = true;
     dragStartX = e.clientX; dragStartY = e.clientY;
@@ -3275,9 +4762,17 @@ function setupTextboxBehavior(el, tb) {
 
   const content = el.querySelector(".tb-content");
   content.addEventListener("input", () => {
+    applyPendingFontFamilyAfterInput(content);
+    applyPendingFontSizeAfterInput(content);
     beginHistoryInteraction();
     tb.html = content.innerHTML;
+    tb.fontFamily = content.dataset.pendingFontFamily || tb.fontFamily || currentFontFamily;
     scheduleHistoryInteractionCommit();
+  });
+  content.addEventListener("beforeinput", () => {
+    applyPendingFontFamilyToTarget(content);
+    applyTextColor(currentTextColor, { record: false });
+    if (currentHighlightColor) applyHighlightColor(currentHighlightColor, { record: false });
   });
   content.addEventListener("keyup", updateFormatBar);
   content.addEventListener("mouseup", updateFormatBar);
@@ -3286,7 +4781,11 @@ function setupTextboxBehavior(el, tb) {
     selectedTextbox = tb;
     selectedCell = null;
     selectedImage = null;
+    selectedHeader = null;
+    applyPendingFontFamilyToTarget(content);
+    applyPendingFontSizeToTarget(content);
     updateFormatBar();
+    applyPendingFormatBrush();
   });
 
   document.addEventListener("mousemove", (e) => {
@@ -3328,7 +4827,8 @@ function addImageFromSource(src, srcType = "base64") {
     id: imageIdCounter++,
     x: 20, y: 72, w: 70, h: 50,
     src,
-    srcType
+    srcType,
+    zIndex: nextLayerZ()
   };
   data.images.push(image);
   renderImages();
@@ -3365,11 +4865,13 @@ function renderImages() {
   (data.images || []).forEach(image => {
     const el = document.createElement("div");
     el.className = "floating-image";
+    if (selectedImage && selectedImage.id === image.id) el.classList.add("selected");
     el.dataset.id = image.id;
     el.style.left = image.x + "mm";
     el.style.top = image.y + "mm";
     el.style.width = image.w + "mm";
     el.style.height = image.h + "mm";
+    el.style.zIndex = image.zIndex || 1;
     el.innerHTML = `<img src="${escapeHtml(image.src)}" alt=""><div class="resize-handle"></div>`;
     layer.appendChild(el);
     setupImageBehavior(el, image);
@@ -3386,9 +4888,12 @@ function selectImage(el, image) {
   document.querySelectorAll(".floating-image.selected").forEach(img => {
     if (img !== el) img.classList.remove("selected");
   });
+  document.querySelectorAll(".floating-shape.selected").forEach(shape => shape.classList.remove("selected"));
   selectedCell = null;
   selectedTextbox = null;
   selectedImage = image;
+  selectedShape = null;
+  selectedHeader = null;
   const ts = document.getElementById("textboxSettings");
   if (ts) ts.style.display = "none";
   el.classList.add("selected");
@@ -3458,6 +4963,229 @@ function setupImageBehavior(el, image) {
   });
 }
 
+function addShape() {
+  const raw = prompt("図形を選んでください: 直線 / 四角 / 丸 / 矢印", "四角");
+  if (!raw) return;
+  const typeMap = { "直線": "line", "四角": "rect", "丸": "ellipse", "円": "ellipse", "矢印": "arrow" };
+  const type = typeMap[raw.trim()] || "rect";
+  recordHistory();
+  if (!data.shapes) data.shapes = [];
+  const shape = {
+    id: shapeIdCounter++,
+    type,
+    x: 24,
+    y: 84,
+    w: type === "line" || type === "arrow" ? 46 : 32,
+    h: type === "line" || type === "arrow" ? 12 : 24,
+    lineStyle: "solid",
+    lineWidth: "1.5",
+    color: "#111111",
+    zIndex: nextLayerZ()
+  };
+  data.shapes.push(shape);
+  renderShapes();
+  setTimeout(() => {
+    const el = document.querySelector(`.floating-shape[data-id="${shape.id}"]`);
+    if (el) selectShape(el, shape);
+  }, 50);
+}
+
+function shapeSvg(shape) {
+  const dash = shape.lineStyle === "dashed" ? "6 4" : shape.lineStyle === "dotted" ? "2 3" : "";
+  const stroke = escapeHtml(shape.color || "#111111");
+  const width = escapeHtml(shape.lineWidth || "1.5");
+  const dashAttr = dash ? ` stroke-dasharray="${dash}"` : "";
+  if (shape.type === "line") {
+    return `<svg viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="4" y1="50" x2="96" y2="50" stroke="${stroke}" stroke-width="${width}"${dashAttr}/></svg>`;
+  }
+  if (shape.type === "arrow") {
+    return `<svg viewBox="0 0 100 100" preserveAspectRatio="none"><defs><marker id="arrow-${shape.id}" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="${stroke}"/></marker></defs><line x1="4" y1="50" x2="92" y2="50" stroke="${stroke}" stroke-width="${width}"${dashAttr} marker-end="url(#arrow-${shape.id})"/></svg>`;
+  }
+  if (shape.type === "ellipse") {
+    return `<svg viewBox="0 0 100 100" preserveAspectRatio="none"><ellipse cx="50" cy="50" rx="46" ry="44" fill="none" stroke="${stroke}" stroke-width="${width}"${dashAttr}/></svg>`;
+  }
+  return `<svg viewBox="0 0 100 100" preserveAspectRatio="none"><rect x="4" y="4" width="92" height="92" fill="none" stroke="${stroke}" stroke-width="${width}"${dashAttr}/></svg>`;
+}
+
+function renderShapes() {
+  const layer = document.getElementById("textboxLayer");
+  if (!layer) return;
+  layer.querySelectorAll(".floating-shape").forEach(el => el.remove());
+  (data.shapes || []).forEach(shape => {
+    const el = document.createElement("div");
+    el.className = "floating-shape";
+    if (selectedShape && selectedShape.id === shape.id) el.classList.add("selected");
+    el.dataset.id = shape.id;
+    el.style.left = shape.x + "mm";
+    el.style.top = shape.y + "mm";
+    el.style.width = shape.w + "mm";
+    el.style.height = shape.h + "mm";
+    el.style.zIndex = shape.zIndex || 2;
+    el.innerHTML = `${shapeSvg(shape)}<div class="resize-handle"></div>`;
+    layer.appendChild(el);
+    setupShapeBehavior(el, shape);
+  });
+}
+
+function selectShape(el, shape) {
+  document.querySelectorAll(".ans-cell.selected").forEach(c => c.classList.remove("selected"));
+  document.querySelectorAll(".floating-textbox.selected").forEach(t => {
+    t.classList.remove("selected", "editing");
+    const c = t.querySelector(".tb-content");
+    if (c) c.setAttribute("contenteditable", "false");
+  });
+  document.querySelectorAll(".floating-image.selected").forEach(img => img.classList.remove("selected"));
+  document.querySelectorAll(".floating-shape.selected").forEach(s => {
+    if (s !== el) s.classList.remove("selected");
+  });
+  selectedCell = null;
+  selectedTextbox = null;
+  selectedImage = null;
+  selectedShape = shape;
+  selectedHeader = null;
+  const ts = document.getElementById("textboxSettings");
+  if (ts) ts.style.display = "none";
+  el.classList.add("selected");
+  updateFormatBar();
+}
+
+function setupShapeBehavior(el, shape) {
+  let isDragging = false, isResizing = false;
+  let dragStartX, dragStartY, origX, origY;
+  let resizeStartX, resizeStartY, origW, origH;
+  let motionHistorySnapshot = null;
+
+  function startResize(e) {
+    motionHistorySnapshot = createHistorySnapshot();
+    isResizing = true;
+    resizeStartX = e.clientX; resizeStartY = e.clientY;
+    origW = shape.w; origH = shape.h;
+    selectShape(el, shape);
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  el.querySelector(".resize-handle")?.addEventListener("mousedown", startResize);
+  el.addEventListener("mousedown", (e) => {
+    if (e.target.classList.contains("resize-handle")) {
+      startResize(e);
+      return;
+    }
+    motionHistorySnapshot = createHistorySnapshot();
+    selectShape(el, shape);
+    isDragging = true;
+    dragStartX = e.clientX; dragStartY = e.clientY;
+    origX = shape.x; origY = shape.y;
+    e.preventDefault();
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    const mmRatio = 25.4 / 96;
+    if (isDragging) {
+      shape.x = Math.max(0, origX + (e.clientX - dragStartX) * mmRatio);
+      shape.y = Math.max(0, origY + (e.clientY - dragStartY) * mmRatio);
+      el.style.left = shape.x + "mm";
+      el.style.top = shape.y + "mm";
+    } else if (isResizing) {
+      shape.w = Math.max(8, origW + (e.clientX - resizeStartX) * mmRatio);
+      shape.h = Math.max(6, origH + (e.clientY - resizeStartY) * mmRatio);
+      el.style.width = shape.w + "mm";
+      el.style.height = shape.h + "mm";
+    }
+  });
+
+  document.addEventListener("mouseup", () => {
+    if ((isDragging || isResizing) && motionHistorySnapshot) {
+      if (!snapshotsEqual(motionHistorySnapshot, createHistorySnapshot())) {
+        pushUndoSnapshot(motionHistorySnapshot);
+      }
+      motionHistorySnapshot = null;
+    }
+    isDragging = false;
+    isResizing = false;
+  });
+}
+
+function nextLayerZ() {
+  const values = [
+    ...data.textboxes.map(item => Number(item.zIndex) || 2),
+    ...(data.images || []).map(item => Number(item.zIndex) || 1),
+    ...(data.shapes || []).map(item => Number(item.zIndex) || 2)
+  ];
+  return Math.max(2, ...values) + 1;
+}
+
+function getSelectedLayerItem() {
+  if (selectedTextbox) return { collection: data.textboxes, item: selectedTextbox, render: () => { renderTextboxes(); renderImages(); renderShapes(); } };
+  if (selectedImage) return { collection: data.images || [], item: selectedImage, render: () => { renderImages(); renderShapes(); } };
+  if (selectedShape) return { collection: data.shapes || [], item: selectedShape, render: renderShapes };
+  return null;
+}
+
+function bringForward() {
+  const target = getSelectedLayerItem();
+  if (!target) return;
+  recordHistory();
+  target.item.zIndex = nextLayerZ();
+  target.render();
+}
+
+function sendBackward() {
+  const target = getSelectedLayerItem();
+  if (!target) return;
+  recordHistory();
+  target.item.zIndex = 1;
+  target.render();
+}
+
+function duplicateSelected() {
+  recordHistory();
+  if (selectedTextbox) {
+    const copy = { ...clonePlain(selectedTextbox), id: textboxIdCounter++, x: selectedTextbox.x + 6, y: selectedTextbox.y + 6, zIndex: nextLayerZ() };
+    data.textboxes.push(copy);
+    renderTextboxes(); renderImages(); renderShapes();
+    setTimeout(() => selectTextboxById(copy.id), 30);
+  } else if (selectedImage) {
+    const copy = { ...clonePlain(selectedImage), id: imageIdCounter++, x: selectedImage.x + 6, y: selectedImage.y + 6, zIndex: nextLayerZ() };
+    data.images.push(copy);
+    renderImages(); renderShapes();
+    setTimeout(() => {
+      const el = document.querySelector(`.floating-image[data-id="${copy.id}"]`);
+      if (el) selectImage(el, copy);
+    }, 30);
+  } else if (selectedShape) {
+    const copy = { ...clonePlain(selectedShape), id: shapeIdCounter++, x: selectedShape.x + 6, y: selectedShape.y + 6, zIndex: nextLayerZ() };
+    data.shapes.push(copy);
+    renderShapes();
+    setTimeout(() => {
+      const el = document.querySelector(`.floating-shape[data-id="${copy.id}"]`);
+      if (el) selectShape(el, copy);
+    }, 30);
+  }
+}
+
+function setSelectedShapeLineStyle() {
+  if (!selectedShape) return;
+  const raw = prompt("線種を選んでください: 実線 / 破線 / 点線", selectedShape.lineStyle === "dashed" ? "破線" : selectedShape.lineStyle === "dotted" ? "点線" : "実線");
+  if (!raw) return;
+  const map = { "実線": "solid", "破線": "dashed", "点線": "dotted" };
+  const next = map[raw.trim()] || "solid";
+  if (selectedShape.lineStyle === next) return;
+  recordHistory();
+  selectedShape.lineStyle = next;
+  renderShapes();
+}
+
+function setSelectedShapeLineWidth() {
+  if (!selectedShape) return;
+  const raw = prompt("線幅を入力してください", selectedShape.lineWidth || "1.5");
+  const next = clampNumber(raw, 0.5, 8, Number(selectedShape.lineWidth) || 1.5);
+  if (String(selectedShape.lineWidth) === String(next)) return;
+  recordHistory();
+  selectedShape.lineWidth = String(next);
+  renderShapes();
+}
+
 function updateTextboxStyle(prop, rawValue) {
   if (!selectedTextbox) return;
 
@@ -3493,6 +5221,7 @@ function exportJSON() {
     ...data,
     textboxIdCounter,
     imageIdCounter,
+    shapeIdCounter,
     settings: {
       title: document.getElementById("title")?.value || "",
       paperSize: document.getElementById("paperSize")?.value || "A4",
@@ -3501,7 +5230,8 @@ function exportJSON() {
       centerLine: isToggleOn("centerLine"),
       pageNum: isToggleOn("pageNum"),
       showSubScore: isToggleOn("showSubScore"),
-      showTotalScore: isToggleOn("showTotalScore")
+      showTotalScore: isToggleOn("showTotalScore"),
+      showAnswerText: isToggleOn("showAnswerText")
     }
   };
   const blob = new Blob([JSON.stringify(dataToSave, null, 2)], { type: "application/json" });
@@ -3529,9 +5259,11 @@ function importJSON() {
       data.header = normalizeHeaderFields(loaded.header);
       data.textboxes = loaded.textboxes || [];
       data.images = loaded.images || [];
+      data.shapes = loaded.shapes || [];
       data.pageLayout = normalizePageLayout(loaded.pageLayout || loaded.settings?.pageLayout);
       textboxIdCounter = loaded.textboxIdCounter || (Math.max(0, ...data.textboxes.map(t => Number(t.id) || 0)) + 1);
       imageIdCounter = loaded.imageIdCounter || (Math.max(0, ...data.images.map(img => Number(img.id) || 0)) + 1);
+      shapeIdCounter = loaded.shapeIdCounter || (Math.max(0, ...data.shapes.map(shape => Number(shape.id) || 0)) + 1);
       data.activeQuestionId = loaded.activeQuestionId || (data.questions[0]?.id ?? null);
       if (loaded.settings) {
         syncTitle(loaded.settings.title || data.title, { renderSheet: false });
@@ -3564,9 +5296,11 @@ function newDocument() {
   data = createDefaultData();
   textboxIdCounter = 1;
   imageIdCounter = 1;
+  shapeIdCounter = 1;
   selectedCell = null;
   selectedTextbox = null;
   selectedImage = null;
+  selectedShape = null;
   syncTitle(data.title, { renderSheet: false });
   const paperSize = document.getElementById("paperSize");
   if (paperSize) paperSize.value = "A4";
@@ -3588,12 +5322,27 @@ function selectRibbonTab(name) {
   syncPageLayoutInputs();
 }
 
+function openActiveQuestionSettings() {
+  if (selectedCell?.qId) data.activeQuestionId = selectedCell.qId;
+  if (!data.activeQuestionId && data.questions[0]) data.activeQuestionId = data.questions[0].id;
+  activeNavTab = "questions";
+  if (data.activeQuestionId) questionDetailTabs[data.activeQuestionId] = "count";
+  selectRibbonTab("question");
+  renderQuestionList();
+}
+
 function bindRibbonTabs() {
   document.querySelectorAll(".ribbon-tabs .tab[data-tab]").forEach(tab => {
     tab.addEventListener("click", () => selectRibbonTab(tab.dataset.tab));
   });
   document.querySelectorAll("[data-tab-jump]").forEach(btn => {
     btn.addEventListener("click", () => selectRibbonTab(btn.dataset.tabJump));
+  });
+  document.querySelectorAll(".nav-tab[data-nav-tab]").forEach(tab => {
+    tab.addEventListener("click", () => {
+      activeNavTab = tab.dataset.navTab;
+      renderQuestionList();
+    });
   });
 }
 
@@ -3637,6 +5386,14 @@ function runRibbonAction(action) {
   if (action === "add-textbox") addTextbox();
   if (action === "add-image") addImage();
   if (action === "add-image-url") addImageUrl();
+  if (action === "add-shape") addShape();
+  if (action === "add-table") addTable();
+  if (action === "open-question-settings") openActiveQuestionSettings();
+  if (action === "bring-forward") bringForward();
+  if (action === "send-backward") sendBackward();
+  if (action === "duplicate-selected") duplicateSelected();
+  if (action === "set-shape-line-style") setSelectedShapeLineStyle();
+  if (action === "set-shape-line-width") setSelectedShapeLineWidth();
   if (action === "delete-active-question" && data.activeQuestionId) deleteQuestion(data.activeQuestionId);
 }
 
@@ -3674,10 +5431,17 @@ function setupRibbonColorPicker() {
   const palette = document.createElement("div");
   palette.id = "fontColorPalette";
   palette.style.cssText = "display:none;position:absolute;z-index:1000;background:#fff;border:1px solid var(--line-mid);box-shadow:0 2px 8px rgba(0,0,0,.14);padding:4px;border-radius:3px;gap:4px;";
-  palette.innerHTML = `
-    <button type="button" data-color="#111111" title="黒文字" style="width:24px;height:24px;border:1px solid var(--line-mid);background:#fff;color:#111;font-weight:700">A</button>
-    <button type="button" data-color="${ANSWER_COLOR}" title="解答色" style="width:24px;height:24px;border:1px solid var(--line-mid);background:#fff;color:${ANSWER_COLOR};font-weight:700">A</button>
-  `;
+  const colors = [
+    ["#111111", "黒"],
+    [ANSWER_COLOR, "解答色"],
+    ["#d13438", "赤"],
+    ["#0078d4", "青"],
+    ["#107c10", "緑"],
+    ["#5c2d91", "紫"]
+  ];
+  palette.innerHTML = colors.map(([color, label]) =>
+    `<button type="button" data-color="${color}" title="${label}" style="width:24px;height:24px;border:1px solid var(--line-mid);background:#fff;color:${color};font-weight:700">A</button>`
+  ).join("");
   document.body.appendChild(palette);
   fontColorButton.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -3696,12 +5460,50 @@ function setupRibbonColorPicker() {
   document.addEventListener("click", () => {
     palette.style.display = "none";
   });
+
+  const highlightButton = document.querySelector('button.rb-icon.split use[href="#i-highlight"]')?.closest("button");
+  if (!highlightButton || highlightButton.dataset.boundHighlightPicker) return;
+  highlightButton.dataset.boundHighlightPicker = "true";
+  highlightButton.id = "fmtHighlightPicker";
+  highlightButton.title = "蛍光ペン";
+  highlightButton.innerHTML = `
+    <span style="font-size:11px;font-weight:700;line-height:1;background:#fff59d;padding:0 2px">A</span>
+    <span id="fmtHighlightSwatch" style="position:absolute;left:6px;right:10px;bottom:3px;height:2px;background:#fff59d"></span>
+    <svg class="caret"><use href="#i-caret-d"/></svg>
+  `;
+  highlightButton.style.position = "relative";
+  const highlightPalette = document.createElement("div");
+  highlightPalette.id = "highlightPalette";
+  highlightPalette.style.cssText = palette.style.cssText;
+  const highlights = ["#fff59d", "#fde7e9", "#cfe8ff", "#dff6dd", "#ffffff"];
+  highlightPalette.innerHTML = highlights.map(color =>
+    `<button type="button" data-color="${color}" title="${color === "#ffffff" ? "なし" : "マーカー"}" style="width:24px;height:24px;border:1px solid var(--line-mid);background:${color}"></button>`
+  ).join("");
+  document.body.appendChild(highlightPalette);
+  highlightButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const rect = highlightButton.getBoundingClientRect();
+    highlightPalette.style.left = `${rect.left}px`;
+    highlightPalette.style.top = `${rect.bottom + 2}px`;
+    highlightPalette.style.display = highlightPalette.style.display === "flex" ? "none" : "flex";
+  });
+  highlightPalette.querySelectorAll("[data-color]").forEach(btn => {
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      applyHighlightColor(btn.dataset.color);
+      highlightPalette.style.display = "none";
+    });
+  });
+  document.addEventListener("click", () => {
+    highlightPalette.style.display = "none";
+  });
 }
 
 function bindEvents() {
   bindRibbonTabs();
   bindRibbonCommands();
   setupRibbonColorPicker();
+  setupNavResizer();
 
   // トグル
   setupToggle("centerLine");
@@ -3726,15 +5528,36 @@ function bindEvents() {
 
   // フォント
   const ff = document.getElementById("fmtFontFamily");
-  if (ff) ff.addEventListener("change", () => applyFontFamily(ff.value));
+  if (ff) {
+    ff.addEventListener("pointerdown", rememberActiveSelection);
+    ff.addEventListener("focus", rememberActiveSelection);
+    ff.addEventListener("change", () => applyFontFamily(ff.value));
+  }
   const fs = document.getElementById("fmtFontSize");
-  if (fs) fs.addEventListener("change", () => applyFontSize(fs.value));
+  if (fs) {
+    fs.addEventListener("pointerdown", rememberActiveSelection);
+    fs.addEventListener("focus", rememberActiveSelection);
+    fs.addEventListener("change", () => applyFontSize(fs.value));
+  }
 
   // 書式ボタン
   const bind = (id, fn) => { const b = document.getElementById(id); if (b) b.addEventListener("click", fn); };
   bind("fmtBold", () => execFormat("bold"));
   bind("fmtItalic", () => execFormat("italic"));
   bind("fmtUnderline", () => execFormat("underline"));
+  bind("fmtStrike", () => execFormat("strikeThrough"));
+  bind("fmtSuperscript", () => execFormat("superscript"));
+  bind("fmtSubscript", () => execFormat("subscript"));
+  bind("fmtFontGrow", () => stepFontSize(1));
+  bind("fmtFontShrink", () => stepFontSize(-1));
+  ["fmtFontGrow", "fmtFontShrink"].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener("mousedown", e => e.preventDefault());
+  });
+  bind("clipPaste", pasteClipboardText);
+  bind("clipCopy", copyActiveContent);
+  bind("clipCut", cutActiveContent);
+  bind("clipFormat", copyCurrentFormat);
   bind("fmtAlignLeft", () => setAlign("left"));
   bind("fmtAlignCenter", () => setAlign("center"));
   bind("fmtAlignRight", () => setAlign("right"));
@@ -3757,6 +5580,9 @@ function bindEvents() {
 
   bind("undoBtn", undo);
   bind("redoBtn", redo);
+  bind("quickSaveBtn", exportJSON);
+  bind("fullscreenBtn", toggleFullscreen);
+  document.addEventListener("fullscreenchange", updateFullscreenButton);
 
   // リボン上部右のアクション（保存・読込・印刷）
   const ribbonActions = document.querySelectorAll(".ribbon-tabs-right .small-btn");
@@ -3798,6 +5624,8 @@ function bindEvents() {
         !e.target.closest(".ribbon-tabs") &&
         !e.target.closest(".floating-textbox") &&
         !e.target.closest(".floating-image") &&
+        !e.target.closest(".floating-shape") &&
+        !e.target.closest(".sheet-header") &&
         !e.target.closest(".nav-pane") &&
         !e.target.closest(".titlebar") &&
         !e.target.closest(".status")) {
@@ -3808,9 +5636,12 @@ function bindEvents() {
         if (c) c.setAttribute("contenteditable", "false");
       });
       document.querySelectorAll(".floating-image.selected").forEach(img => img.classList.remove("selected"));
+      document.querySelectorAll(".floating-shape.selected").forEach(shape => shape.classList.remove("selected"));
       selectedCell = null;
       selectedTextbox = null;
       selectedImage = null;
+      selectedShape = null;
+      selectedHeader = null;
       const ts = document.getElementById("textboxSettings");
       if (ts) ts.style.display = "none";
       updateFormatBar();
@@ -3834,11 +5665,13 @@ function bindEvents() {
         return;
       }
     }
-    if ((e.key === "Delete" || e.key === "Backspace") && (selectedTextbox || selectedImage)) {
+    if ((e.key === "Delete" || e.key === "Backspace") && (selectedTextbox || selectedImage || selectedShape)) {
       const el = selectedTextbox
         ? document.querySelector(`.floating-textbox[data-id="${selectedTextbox.id}"]`)
-        : document.querySelector(`.floating-image[data-id="${selectedImage.id}"]`);
-      if (selectedImage || (el && !el.classList.contains("editing"))) {
+        : selectedImage
+          ? document.querySelector(`.floating-image[data-id="${selectedImage.id}"]`)
+          : document.querySelector(`.floating-shape[data-id="${selectedShape.id}"]`);
+      if (selectedImage || selectedShape || (el && !el.classList.contains("editing"))) {
         deleteSelected();
         e.preventDefault();
       }
@@ -3846,10 +5679,71 @@ function bindEvents() {
   });
 }
 
+function setupNavResizer() {
+  const main = document.querySelector(".main");
+  const pane = document.querySelector(".nav-pane");
+  const handle = document.getElementById("navResizer");
+  if (!main || !pane || !handle) return;
+
+  const storageKey = "answerSheetMaker.navWidth";
+  const applyWidth = (value) => {
+    const width = clampNumber(value, 260, 520, 280);
+    document.documentElement.style.setProperty("--nav-w", `${width}px`);
+    return width;
+  };
+  const savedWidth = localStorage.getItem(storageKey);
+  applyWidth(savedWidth == null ? 280 : savedWidth);
+
+  handle.addEventListener("mousedown", (e) => {
+    const startX = e.clientX;
+    const startWidth = pane.getBoundingClientRect().width;
+    handle.classList.add("is-dragging");
+    document.body.classList.add("is-resizing-nav");
+    e.preventDefault();
+
+    const onMove = (moveEvent) => {
+      applyWidth(startWidth + moveEvent.clientX - startX);
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      handle.classList.remove("is-dragging");
+      document.body.classList.remove("is-resizing-nav");
+      const width = Math.round(pane.getBoundingClientRect().width);
+      localStorage.setItem(storageKey, String(width));
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  });
+}
+
+function updateFullscreenButton() {
+  const btn = document.getElementById("fullscreenBtn");
+  if (!btn) return;
+  const isFullscreen = !!document.fullscreenElement;
+  btn.classList.toggle("is-active", isFullscreen);
+  btn.title = isFullscreen ? "全画面表示を終了" : "全画面表示";
+}
+
+async function toggleFullscreen() {
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else {
+      await document.documentElement.requestFullscreen();
+    }
+  } catch (error) {
+    alert("このブラウザでは全画面表示を開始できませんでした。");
+  } finally {
+    updateFullscreenButton();
+  }
+}
+
 /* ========= 初期化 ========= */
 document.addEventListener("DOMContentLoaded", () => {
   syncTitle(data.title, { renderSheet: false });
   bindEvents();
+  updateFullscreenButton();
   renderQuestionList();
   render();
 });
